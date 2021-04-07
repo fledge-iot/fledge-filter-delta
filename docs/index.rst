@@ -30,4 +30,13 @@ Delta filters are added in the same way as any other filters.
 
     - **Minimum Rate Units**: The units in which minimum rate is define (per second, minute, hour or day)
 
+    - **Individual Tolerances**: A JSON document that can be used to define specific tolerance values for an asset. This is defines as a set of name/value pairs for those assets that should use a tolerance percentage other than the global tolerances specified above. The following example would set the tolerance for the temperature asset to 15% and for the pressure asset to 5%. All other assets would use the tolerance specified in *Tolerance %*.
+
+      .. code-block:: json
+
+         {
+             "temperature" : 15,
+             "pressure" : 5
+         }
+
   - Enable the filter and click *Done* to complete the process of adding the new filter.

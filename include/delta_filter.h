@@ -16,6 +16,7 @@
 #include <vector>
 #include <regex>
 #include <mutex>
+#include <map>
 
 /**
  * A Fledge filter that is used to filter out duplicate data in the readings stream.
@@ -34,29 +35,25 @@ class DeltaFilter : public FledgeFilter {
 		void	ingest(std::vector<Reading *> *in, std::vector<Reading *>& out);
 		void	reconfigure(const std::string& newConfig);
 	private:
+		double		getTolerance(const std::string& asset);
 		class DeltaData {
 			public:
-				DeltaData(Reading *, double tolerance, struct timeval rate);
+				DeltaData(Reading *);
 				~DeltaData();
-				bool			evaluate(Reading *);
+				bool			evaluate(Reading *, double tolerance, struct timeval rate);
 				const std::string& 	getAssetName() { return m_lastSent->getAssetName(); };
-				void			reconfigure(double tolerance, struct timeval rate)
-							{
-								m_tolerance = tolerance;
-								m_rate = rate;
-							};
 			private:
 				Reading		*m_lastSent;
 				struct timeval	m_lastSentTime;
-				double		m_tolerance;
-				struct timeval	m_rate;
 		};
 		typedef std::map<const std::string, DeltaData *> DeltaMap;
 		void 		handleConfig(const ConfigCategory& conf);
 		DeltaMap	m_state;
-		double		m_tolerance;
 		struct timeval	m_rate;
 		std::mutex	m_configMutex;
+		double		m_tolerance;
+		std::map<std::string, double>
+				m_tolerances;
 };
 
 

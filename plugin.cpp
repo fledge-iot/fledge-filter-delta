@@ -24,27 +24,50 @@
 #include <version.h>
 
 #define FILTER_NAME "delta"
-#define DEFAULT_CONFIG "{\"plugin\" : { \"description\" : \"Delta filter plugin\", " \
-                       		"\"type\" : \"string\", " \
-				"\"default\" : \"" FILTER_NAME "\", \"readonly\" : \"true\" }, " \
-			 "\"enable\": {\"description\": \"A switch that can be used to enable or disable execution of " \
-					 "the delta filter.\", " \
-				"\"type\": \"boolean\", " \
-				"\"displayName\": \"Enabled\", " \
-				"\"default\": \"false\", \"order\" : \"4\" }, " \
-			 "\"tolerance\": {\"description\": \"A percentage difference that will be tolerated " \
-					 "when determining if values are equal.\", " \
-				"\"type\": \"float\", " \
-				"\"default\": \"0\", \"order\" : \"1\", \"displayName\" : \"Tolerance %\" }, " \
-			 "\"minRate\": {\"description\": \"The minimum rate at which data must be sent\", " \
-				"\"type\": \"integer\", " \
-				"\"default\": \"0\", \"order\" : \"2\", \"displayName\" : \"Minimum Rate\" }, " \
-			 "\"rateUnit\": {\"description\": \"The unit used to evaluate the minimum rate\", " \
-				"\"type\": \"enumeration\", " \
-				"\"options\" : [ \"per second\", \"per minute\", \"per hour\", \"per day\" ], " \
-				"\"default\": \"per second\", " \
-				"\"order\" : \"3\", \"displayName\" : \"Minimum Rate Units\" } " \
-			"}"
+static const char *default_config = QUOTE({
+		"plugin" : { 
+			"description" : "Delta filter plugin",
+                       	"type" : "string",
+			"default" :  FILTER_NAME,
+			"readonly" : "true"
+		       	},
+		 "enable": {
+		 	"description": "A switch that can be used to enable or disable execution of the delta filter.",
+			"type": "boolean",
+			"displayName": "Enabled",
+			"default": "false",
+			"order" : "5"
+		       	},
+		"tolerance": {
+			"description": "A percentage difference that will be tolerated when determining if values are equal.",
+			"type": "float",
+			"default": "0",
+			"order" : "1",
+		       	"displayName" : "Tolerance %"
+			},
+		"minRate": {
+			"description": "The minimum rate at which data must be sent",
+			"type": "integer",
+			"default": "0",
+			"order" : "2",
+			"displayName" : "Minimum Rate"
+			},
+		"rateUnit": {
+			"description": "The unit used to evaluate the minimum rate",
+			"type": "enumeration",
+			"options" : [ "per second", "per minute", "per hour", "per day" ],
+			"default": "per second",
+			"order" : "3",
+			"displayName" : "Minimum Rate Units"
+			},
+		"overrides" : {
+			"description": "Individual asset tolarances if different from the global tolarance",
+			"type": "JSON",
+			"default": "{ }",
+			"order" : "4",
+			"displayName" : "Individual Tolerances"
+			}
+	});
 
 using namespace std;
 using namespace rapidjson;
@@ -63,7 +86,7 @@ static PLUGIN_INFORMATION info = {
         0,          		  // Flags
         PLUGIN_TYPE_FILTER,       // Type
         "1.0.0",                  // Interface version
-	DEFAULT_CONFIG	          // Default plugin configuration
+	default_config	          // Default plugin configuration
 };
 
 typedef struct
