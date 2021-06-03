@@ -18,9 +18,11 @@
 #include <reading_set.h>
 #include <vector>
 #include <map>
+#include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 
 using namespace std;
+using namespace rapidjson;
 
 /**
  * Constructor for the Delta Filter. Calls the base FledgeFilter constructor
@@ -76,11 +78,11 @@ void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
 		DeltaMap::iterator deltaIt = m_state.find(reading->getAssetName());
 		if (deltaIt == m_state.end())
 		{
-			DeltaData *delta = new DeltaData(reading, m_tolerance, m_rate);
+			DeltaData *delta = new DeltaData(reading);
 			m_state.insert(pair<string, DeltaData *>(delta->getAssetName(), delta));
 			out.push_back(*it);
 		}
-		else if (deltaIt->second->evaluate(reading))
+		else if (deltaIt->second->evaluate(reading, getTolerance(reading->getAssetName()), m_rate))
 		{
 			// This reading needs to be sent onwards
 			out.push_back(*it);
@@ -102,10 +104,8 @@ void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
  * @param tolerance	The percentage tolerance configured for the filter
  * @param rate		The required minimum rate, expressed as time between sends
  */
-DeltaFilter::DeltaData::DeltaData(Reading *reading,
-				  double tolerance,
-				  struct timeval rate) :
-	m_lastSent(new Reading(*reading)), m_rate(rate), m_tolerance(tolerance)
+DeltaFilter::DeltaData::DeltaData(Reading *reading) :
+	m_lastSent(new Reading(*reading))
 {
 	gettimeofday(&m_lastSentTime, NULL);
 }
@@ -142,15 +142,17 @@ DeltaFilter::DeltaData::~DeltaData()
  * @param candidiate	The candidiate reading
  */
 bool
-DeltaFilter::DeltaData::evaluate(Reading *candidiate)
+DeltaFilter::DeltaData::evaluate(Reading *candidiate,
+				  double tolerance,
+				  struct timeval rate)
 {
 bool		sendThis = false;
 struct timeval	now, res;
 
-	if (m_rate.tv_sec != 0 || m_rate.tv_usec != 0)
+	if (rate.tv_sec != 0 || rate.tv_usec != 0)
 	{
 		candidiate->getUserTimestamp(&now);
-		timeradd(&m_lastSentTime, &m_rate, &res);
+		timeradd(&m_lastSentTime, &rate, &res);
 		if (timercmp(&now, &res, >))
 		{
 			sendThis = true;
@@ -194,14 +196,14 @@ struct timeval	now, res;
 			{
 				case DatapointValue::T_INTEGER:
 					if (abs(nValue.toInt() - oValue.toInt())
-						> (m_tolerance * oValue.toInt()) / 100)
+						> (tolerance * abs(oValue.toInt())) / 100)
 					{
 						sendThis = true;
 					}
 					break;
 				case DatapointValue::T_FLOAT:
 					if (fabs(nValue.toDouble() - oValue.toDouble())
-						> (m_tolerance * oValue.toDouble()) / 100)
+						> (tolerance * fabs(oValue.toDouble())) / 100)
 					{
 						sendThis = true;
 					}
@@ -247,11 +249,25 @@ DeltaFilter::reconfigure(const string& newConfig)
 	lock_guard<mutex> guard(m_configMutex);
 	setConfig(newConfig);
         handleConfig(m_config);
-	for (DeltaMap::iterator it = m_state.begin(); it != m_state.end(); ++it)
-	{
-		it->second->reconfigure(m_tolerance, m_rate);
-	}
 }
+
+/**
+ * Return the tolarance to use for the given asset name
+ *
+ * @param asset		The name of the asset
+ * @return The tolarance to use
+ */
+double
+DeltaFilter::getTolerance(const std::string& asset)
+{
+	auto t = m_tolerances.find(asset);
+	if (t != m_tolerances.end())
+	{
+		return t->second;
+	}
+	return m_tolerance;
+}
+
 
 /**
  * Handle the configuration of the delta filter
@@ -293,5 +309,15 @@ DeltaFilter::handleConfig(const ConfigCategory& config)
 	{
 		m_rate.tv_sec = (24 * 60 * 60) / minRate;
 		m_rate.tv_usec = 0;
+	}
+	m_tolerances.clear();
+	if (config.itemExists("overrides"))
+	{
+		Document doc;
+		ParseResult res = doc.Parse(config.getValue("overrides").c_str());
+		for (auto &t : doc.GetObject())
+		{
+			m_tolerances.insert(pair<string, double>(t.name.GetString(), t.value.GetDouble()));
+		}
 	}
 }
