@@ -189,35 +189,64 @@ struct timeval	now, res;
 			if (oValue.getType() != nValue.getType())
 			{
 				// Different type
-				continue;
+				if (oValue.getType() == DatapointValue::T_INTEGER 
+						&& nValue.getType() == DatapointValue::T_FLOAT)
+				{
+					double prevValue = (double)oValue.toInt();
+					double newValue = nValue.toDouble();
+					if (fabs(newValue - prevValue)
+						> (tolerance * fabs(prevValue)) / 100)
+					{
+						sendThis = true;
+					}
+				}
+				else if (oValue.getType() == DatapointValue::T_FLOAT 
+						&& nValue.getType() == DatapointValue::T_INTEGER)
+				{
+					double prevValue = oValue.toDouble();
+					double newValue = (double)nValue.toInt();
+					if (fabs(newValue - prevValue)
+						> (tolerance * fabs(prevValue)) / 100)
+					{
+						sendThis = true;
+					}
+				}
+				else
+				{
+					Logger::getLogger()->warn("Incompatible change in type of datapoint %s",
+								(*nIt)->getName().c_str());
+				}
 			}
-
-			switch(nValue.getType())
+			else
 			{
-				case DatapointValue::T_INTEGER:
-					if (abs(nValue.toInt() - oValue.toInt())
-						> (tolerance * abs(oValue.toInt())) / 100)
-					{
-						sendThis = true;
-					}
-					break;
-				case DatapointValue::T_FLOAT:
-					if (fabs(nValue.toDouble() - oValue.toDouble())
-						> (tolerance * fabs(oValue.toDouble())) / 100)
-					{
-						sendThis = true;
-					}
-					break;
-				case DatapointValue::T_STRING:
-					if (nValue.toString().compare(oValue.toString()))
-					{
-						sendThis = true;
-					}
-					break;
-				case DatapointValue::T_FLOAT_ARRAY:
-					// T_FLOAT_ARRAY not supported right now
-				default:
-					break;
+
+				switch(nValue.getType())
+				{
+					case DatapointValue::T_INTEGER:
+						if (abs(nValue.toInt() - oValue.toInt())
+							> (tolerance * abs(oValue.toInt())) / 100)
+						{
+							sendThis = true;
+						}
+						break;
+					case DatapointValue::T_FLOAT:
+						if (fabs(nValue.toDouble() - oValue.toDouble())
+							> (tolerance * fabs(oValue.toDouble())) / 100)
+						{
+							sendThis = true;
+						}
+						break;
+					case DatapointValue::T_STRING:
+						if (nValue.toString().compare(oValue.toString()))
+						{
+							sendThis = true;
+						}
+						break;
+					case DatapointValue::T_FLOAT_ARRAY:
+						// T_FLOAT_ARRAY not supported right now
+					default:
+						break;
+				}
 			}
 			if (sendThis)
 			{
