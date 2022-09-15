@@ -164,6 +164,7 @@ void plugin_ingest(PLUGIN_HANDLE *handle,
 	// Remove the input readingSet data
 	delete (ReadingSet *)readingSet;
 
+	AssetTracker *tracker = AssetTracker::getAssetTracker();
 	// Create a new ReadingSet from new reading data
 	ReadingSet *newReadingSet = new ReadingSet(&newReadings);
 	const vector<Reading *>& readings2 = newReadingSet->getAllReadings();
@@ -171,7 +172,10 @@ void plugin_ingest(PLUGIN_HANDLE *handle,
 						      elem != readings2.end();
 						      ++elem)
 	{
-		AssetTracker::getAssetTracker()->addAssetTrackingTuple(info->configCatName, (*elem)->getAssetName(), string("Filter"));
+		if (tracker)
+		{
+			tracker->addAssetTrackingTuple(info->configCatName, (*elem)->getAssetName(), string("Filter"));
+		}
 	}
 
 	// Pass newReadings to filter->m_func
