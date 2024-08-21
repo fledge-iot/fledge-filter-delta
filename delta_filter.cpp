@@ -67,7 +67,8 @@ DeltaFilter::~DeltaFilter()
  */
 void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
 {
-
+    bool sendOrig;
+    Reading* readingToSend = nullptr;
 	// Iterate over the readings
 	for (vector<Reading *>::const_iterator it = readings->begin();
 					it != readings->end(); it++)
@@ -82,10 +83,22 @@ void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
 			m_state.insert(pair<string, DeltaData *>(delta->getAssetName(), delta));
 			out.push_back(*it);
 		}
-		else if (deltaIt->second->evaluate(reading, getTolerance(reading->getAssetName()), m_rate, m_processingMode))
+		else if (deltaIt->second->evaluate(reading, getTolerance(reading->getAssetName()), m_rate, 
+                                            m_processingMode, sendOrig, readingToSend))
 		{
-			// This reading needs to be sent onwards
-			out.push_back(*it);
+            // evaluate's return value indicates whether a reading needs to be sent onwards
+            if(sendOrig)
+            {
+                // out.push_back(move(*it)); // TODO: check if it is possible to just move the reading ptr to out vector
+                // *it = nullptr;
+                out.push_back(new Reading(*reading));
+                delete *it;
+            }
+            else
+            {
+                out.push_back(readingToSend); // readingToSend is allocated on heap
+                delete *it;
+            }
 		}
 		else
 		{
@@ -145,7 +158,9 @@ bool
 DeltaFilter::DeltaData::evaluate(Reading *candidate,
 				  double tolerance,
 				  struct timeval rate,
-                  DeltaFilter::ProcessingMode processingMode)
+                  DeltaFilter::ProcessingMode processingMode,
+                  bool &sendOrig,
+                  Reading *readingToSend)
 {
 // bool		sendThis = false;
 bool        maxPeriodElapsed = false;
@@ -203,7 +218,7 @@ struct timeval	now, res;
 						> (tolerance * fabs(prevValue)) / 100)
 					{
                         double percChange = fabs(((newValue - prevValue) * 100.0) / prevValue);
-                        Logger::getLogger()->info("Datapoint %s has %lf % change", 
+                        Logger::getLogger()->info("Datapoint %s has %lf %% change",
                                                     (*nIt)->getName().c_str(), percChange);
 						// sendThis = true;
                         changedDPs.emplace((*nIt)->getName());
@@ -224,7 +239,7 @@ struct timeval	now, res;
 							> (tolerance * abs(oValue.toInt())) / 100)
 						{
                             double percChange = (abs(nValue.toInt() - oValue.toInt()) * 100.0) / abs(oValue.toInt());
-                            Logger::getLogger()->info("Datapoint %s has %lf % change", 
+                            Logger::getLogger()->info("Datapoint %s has %lf %% change", 
                                                         (*nIt)->getName().c_str(), percChange);
 							// sendThis = true;
                             changedDPs.emplace((*nIt)->getName());
@@ -235,7 +250,7 @@ struct timeval	now, res;
 							> (tolerance * fabs(oValue.toDouble())) / 100)
 						{
                             double percChange = (fabs(nValue.toDouble() - oValue.toDouble()) * 100.0) / fabs(oValue.toDouble());
-                            Logger::getLogger()->info("Datapoint %s has %lf % change", 
+                            Logger::getLogger()->info("Datapoint %s has %lf %% change", 
                                                         (*nIt)->getName().c_str(), percChange);
 							// sendThis = true;
                             changedDPs.emplace((*nIt)->getName());
@@ -271,6 +286,9 @@ struct timeval	now, res;
 	{
 		delete m_lastSent;
 		m_lastSent = new Reading(*candidate);
+        sendOrig = true;
+        readingToSend = nullptr;
+        // out.emplace_back(new Reading(m_lastSent)); // TODO: this case can be optimized to use the origiinal reading itself
         Logger::getLogger()->info("m_lastSent=%s", m_lastSent->toJSON().c_str());
 		candidate->getUserTimestamp(&m_lastSentTime);
         return true;
@@ -291,10 +309,16 @@ struct timeval	now, res;
             }
         }
         Logger::getLogger()->info("m_lastSent=%s", m_lastSent->toJSON().c_str());
+        // out.emplace_back(new Reading(m_lastSent));
+        sendOrig = false;
+        readingToSend = new Reading(*m_lastSent);
 
         candidate->getUserTimestamp(&m_lastSentTime);
         return true;
     }
+
+    sendOrig = false;
+    readingToSend = nullptr;
 
 	return false;
 }

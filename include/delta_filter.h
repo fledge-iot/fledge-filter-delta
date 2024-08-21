@@ -60,7 +60,8 @@ class DeltaFilter : public FledgeFilter {
 			public:
 				DeltaData(Reading *);
 				~DeltaData();
-				bool			evaluate(Reading *, double tolerance, struct timeval rate, DeltaFilter::ProcessingMode procssingMode);
+                bool evaluate(Reading *, double tolerance, struct timeval rate, 
+                                DeltaFilter::ProcessingMode processingMode, bool &sendOrig, Reading *readingToSend);
 				const std::string& 	getAssetName() { return m_lastSent->getAssetName(); };
 			private:
 				Reading		*m_lastSent;
