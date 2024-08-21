@@ -45,11 +45,20 @@ static const char *default_config = QUOTE({
 			"order" : "1",
 		       	"displayName" : "Tolerance %"
 			},
+        "processingMode": {
+			"description": "Reading processing mode",
+			"type": "enumeration",
+			"options" : [ "Include full reading if any DP exceeds tolerance", "Include full reading if all DPs exceed tolerance", 
+                            "Include only the DPs that exceed tolerance" ],
+			"default": "Include full reading if any DP exceeds tolerance",
+			"order" : "2",
+			"displayName" : "Reading processing mode"
+			},
 		"minRate": {
 			"description": "The minimum rate at which data must be sent",
 			"type": "integer",
 			"default": "0",
-			"order" : "2",
+			"order" : "3",
 			"displayName" : "Minimum Rate"
 			},
 		"rateUnit": {
@@ -57,14 +66,14 @@ static const char *default_config = QUOTE({
 			"type": "enumeration",
 			"options" : [ "per second", "per minute", "per hour", "per day" ],
 			"default": "per second",
-			"order" : "3",
+			"order" : "4",
 			"displayName" : "Minimum Rate Units"
 			},
 		"overrides" : {
 			"description": "Individual asset tolarances if different from the global tolarance",
 			"type": "JSON",
 			"default": "{ }",
-			"order" : "4",
+			"order" : "5",
 			"displayName" : "Individual Tolerances"
 			}
 	});

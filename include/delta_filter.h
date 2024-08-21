@@ -34,13 +34,33 @@ class DeltaFilter : public FledgeFilter {
 		~DeltaFilter();
 		void	ingest(std::vector<Reading *> *in, std::vector<Reading *>& out);
 		void	reconfigure(const std::string& newConfig);
+
+        enum ProcessingMode {
+			ANY_DP_MATCHES=1,
+			ALL_DPs_MATCH,
+			ONLY_CHANGED_DPs,
+            INVALID_MODE = -1
+		};
+
+        ProcessingMode parseProcessingMode(const std::string& s)
+        {
+            if(s.compare("Include full reading if any DP exceeds tolerance") == 0)
+                return ProcessingMode::ANY_DP_MATCHES;
+            else if(s.compare("Include full reading if all DPs exceed tolerance") == 0)
+                return ProcessingMode::ALL_DPs_MATCH;
+            else if(s.compare("Include only the DPs that exceed tolerance") == 0)
+                return ProcessingMode::ONLY_CHANGED_DPs;
+            else
+                return ProcessingMode::INVALID_MODE;
+        }
+
 	private:
 		double		getTolerance(const std::string& asset);
 		class DeltaData {
 			public:
 				DeltaData(Reading *);
 				~DeltaData();
-				bool			evaluate(Reading *, double tolerance, struct timeval rate);
+				bool			evaluate(Reading *, double tolerance, struct timeval rate, DeltaFilter::ProcessingMode procssingMode);
 				const std::string& 	getAssetName() { return m_lastSent->getAssetName(); };
 			private:
 				Reading		*m_lastSent;
@@ -54,6 +74,7 @@ class DeltaFilter : public FledgeFilter {
 		double		m_tolerance;
 		std::map<std::string, double>
 				m_tolerances;
+        ProcessingMode m_processingMode;
 };
 
 

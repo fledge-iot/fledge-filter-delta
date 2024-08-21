@@ -82,7 +82,7 @@ void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
 			m_state.insert(pair<string, DeltaData *>(delta->getAssetName(), delta));
 			out.push_back(*it);
 		}
-		else if (deltaIt->second->evaluate(reading, getTolerance(reading->getAssetName()), m_rate))
+		else if (deltaIt->second->evaluate(reading, getTolerance(reading->getAssetName()), m_rate, m_processingMode))
 		{
 			// This reading needs to be sent onwards
 			out.push_back(*it);
@@ -135,33 +135,37 @@ DeltaFilter::DeltaData::~DeltaData()
  * exceeds the tolerance then the entire reading is sent.
  *
  * Note, the time used when considering rate is not the current time
- * but the tiem in the readings as the rate referes to the reading rate
+ * but the time in the readings as the rate referes to the reading rate
  * and not real time. The two will be different because of buffering
  * without the services that make up a Fledge instance.
  *
- * @param candidiate	The candidiate reading
+ * @param candidate	The candidate reading
  */
 bool
-DeltaFilter::DeltaData::evaluate(Reading *candidiate,
+DeltaFilter::DeltaData::evaluate(Reading *candidate,
 				  double tolerance,
-				  struct timeval rate)
+				  struct timeval rate,
+                  DeltaFilter::ProcessingMode processingMode)
 {
-bool		sendThis = false;
+// bool		sendThis = false;
+bool        maxPeriodElapsed = false;
 struct timeval	now, res;
 
 	if (rate.tv_sec != 0 || rate.tv_usec != 0)
 	{
-		candidiate->getUserTimestamp(&now);
+		candidate->getUserTimestamp(&now);
 		timeradd(&m_lastSentTime, &rate, &res);
 		if (timercmp(&now, &res, >))
 		{
-			sendThis = true;
+			maxPeriodElapsed = true;
 		}
 	}
 
 	// Get a reading DataPoint
 	const vector<Datapoint *>& oDataPoints = m_lastSent->getReadingData();
-	const vector<Datapoint *>& nDataPoints = candidiate->getReadingData();
+	const vector<Datapoint *>& nDataPoints = candidate->getReadingData();
+
+    unordered_set<string> changedDPs;
 
 	// Iterate the datapoints of NEW reading
 	for (vector<Datapoint *>::const_iterator nIt = nDataPoints.begin();
@@ -176,39 +180,33 @@ struct timeval	now, res;
 							 oIt != oDataPoints.end();
 							 ++oIt)
 		{
-			if ((*nIt)->getName().compare((*oIt)->getName()) != 0)
+			if ((*nIt)->getName() != (*oIt)->getName())
 			{
 				// Different name, continue
 				continue;
 			}
 			
-	                // Get the reference to a DataPointValue
-                        const DatapointValue& oValue = (*oIt)->getData();
+            // Get the reference to a DataPointValue
+            const DatapointValue& oValue = (*oIt)->getData();
 
 			// Same datapoint name: check type
 			if (oValue.getType() != nValue.getType())
 			{
 				// Different type
-				if (oValue.getType() == DatapointValue::T_INTEGER 
-						&& nValue.getType() == DatapointValue::T_FLOAT)
+				if ( (oValue.getType() == DatapointValue::T_INTEGER || oValue.getType() == DatapointValue::T_FLOAT) &&  
+						(nValue.getType() == DatapointValue::T_INTEGER || nValue.getType() == DatapointValue::T_FLOAT) )
 				{
-					double prevValue = (double)oValue.toInt();
-					double newValue = nValue.toDouble();
+					double prevValue = (oValue.getType() == DatapointValue::T_INTEGER) ? (double)oValue.toInt() : oValue.toDouble();
+                    double newValue = (nValue.getType() == DatapointValue::T_INTEGER) ? (double)nValue.toInt() : nValue.toDouble();
+					
 					if (fabs(newValue - prevValue)
 						> (tolerance * fabs(prevValue)) / 100)
 					{
-						sendThis = true;
-					}
-				}
-				else if (oValue.getType() == DatapointValue::T_FLOAT 
-						&& nValue.getType() == DatapointValue::T_INTEGER)
-				{
-					double prevValue = oValue.toDouble();
-					double newValue = (double)nValue.toInt();
-					if (fabs(newValue - prevValue)
-						> (tolerance * fabs(prevValue)) / 100)
-					{
-						sendThis = true;
+                        double percChange = fabs(((newValue - prevValue) * 100.0) / prevValue);
+                        Logger::getLogger()->info("Datapoint %s has %lf % change", 
+                                                    (*nIt)->getName().c_str(), percChange);
+						// sendThis = true;
+                        changedDPs.emplace((*nIt)->getName());
 					}
 				}
 				else
@@ -219,27 +217,37 @@ struct timeval	now, res;
 			}
 			else
 			{
-
 				switch(nValue.getType())
 				{
 					case DatapointValue::T_INTEGER:
 						if (abs(nValue.toInt() - oValue.toInt())
 							> (tolerance * abs(oValue.toInt())) / 100)
 						{
-							sendThis = true;
+                            double percChange = (abs(nValue.toInt() - oValue.toInt()) * 100.0) / abs(oValue.toInt());
+                            Logger::getLogger()->info("Datapoint %s has %lf % change", 
+                                                        (*nIt)->getName().c_str(), percChange);
+							// sendThis = true;
+                            changedDPs.emplace((*nIt)->getName());
 						}
 						break;
 					case DatapointValue::T_FLOAT:
 						if (fabs(nValue.toDouble() - oValue.toDouble())
 							> (tolerance * fabs(oValue.toDouble())) / 100)
 						{
-							sendThis = true;
+                            double percChange = (fabs(nValue.toDouble() - oValue.toDouble()) * 100.0) / fabs(oValue.toDouble());
+                            Logger::getLogger()->info("Datapoint %s has %lf % change", 
+                                                        (*nIt)->getName().c_str(), percChange);
+							// sendThis = true;
+                            changedDPs.emplace((*nIt)->getName());
 						}
 						break;
 					case DatapointValue::T_STRING:
 						if (nValue.toString().compare(oValue.toString()))
 						{
-							sendThis = true;
+                            Logger::getLogger()->info("Datapoint %s of STRING type has changed from '%s' to '%s'", 
+                                                        (*nIt)->getName().c_str(), oValue.toString().c_str(), nValue.toString().c_str());
+							// sendThis = true;
+                            changedDPs.emplace((*nIt)->getName());
 						}
 						break;
 					case DatapointValue::T_FLOAT_ARRAY:
@@ -248,25 +256,47 @@ struct timeval	now, res;
 						break;
 				}
 			}
-			if (sendThis)
-			{
-				break;
-			}
-		}
-		if (sendThis)
-		{
-			break;
 		}
 	}
 
-	if (sendThis)
+    Logger::getLogger()->debug("processingMode=%d, changedDPs.size()=%d, nDataPoints.size()=%d", 
+                                processingMode, changedDPs.size(), nDataPoints.size());
+
+    // Act according to processingMode config
+	if ( maxPeriodElapsed ||
+            (processingMode == ProcessingMode::ANY_DP_MATCHES && !changedDPs.empty()) ||
+            (processingMode == ProcessingMode::ALL_DPs_MATCH && changedDPs.size() == nDataPoints.size()) ||
+            (processingMode == ProcessingMode::ONLY_CHANGED_DPs && changedDPs.size() == nDataPoints.size()))
+    // may be replace last 2 conditions above with just "changedDPs.size() == nDataPoints.size()"
 	{
 		delete m_lastSent;
-		m_lastSent = new Reading(*candidiate);
-		candidiate->getUserTimestamp(&m_lastSentTime);
+		m_lastSent = new Reading(*candidate);
+        Logger::getLogger()->info("m_lastSent=%s", m_lastSent->toJSON().c_str());
+		candidate->getUserTimestamp(&m_lastSentTime);
+        return true;
 	}
+    else if(processingMode == ProcessingMode::ONLY_CHANGED_DPs && !changedDPs.empty()) // changedDPs.size() < nDataPoints.size()
+    {
+        delete m_lastSent;
+        Reading *m_lastSent = new Reading(*candidate);
 
-	return sendThis;
+        // remove unchanged DPs from new reading m_lastSent
+        for(const auto &dp : nDataPoints)
+        {
+            string dpName = dp->getName();
+            if(changedDPs.count(dpName) == 0)
+            {
+                Logger::getLogger()->info("ONLY_CHANGED_DPs: removing DP '%s'", dpName.c_str());
+                m_lastSent->removeDatapoint(dpName);
+            }
+        }
+        Logger::getLogger()->info("m_lastSent=%s", m_lastSent->toJSON().c_str());
+
+        candidate->getUserTimestamp(&m_lastSentTime);
+        return true;
+    }
+
+	return false;
 }
 
 /**
@@ -303,6 +333,7 @@ DeltaFilter::getTolerance(const std::string& asset)
  *
  * Configuration items
  *	tolerance	The percentage tolerance when comparing reading data
+ *	processingMode	Reading processing mode
  *	minRate		The minimum rate at which readings should be sent
  *	rateUnit	The units in which minRate is define (per second, minute, hour or day)
  *
@@ -312,6 +343,17 @@ void
 DeltaFilter::handleConfig(const ConfigCategory& config)
 {
 	m_tolerance = strtof(config.getValue("tolerance").c_str(), NULL);
+    
+    string processingMode = config.getValue("processingMode");
+    Logger::getLogger()->info("handleConfig(): processingMode='%s' = %d", processingMode.c_str(), parseProcessingMode(processingMode));
+    m_processingMode = parseProcessingMode(processingMode);
+    if(m_processingMode == DeltaFilter::INVALID_MODE)
+    {
+        Logger::getLogger()->error("Delta filter: Invalid reading processing mode '%s'; changing to default '%s",
+                                        processingMode.c_str(), "Include full reading if any DP exceeds tolerance");
+        m_processingMode = DeltaFilter::ANY_DP_MATCHES;
+    }
+
 	int minRate = strtol(config.getValue("minRate").c_str(), NULL, 10);
 	string unit = config.getValue("rateUnit");
 	if (minRate == 0)
