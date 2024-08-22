@@ -24,11 +24,11 @@ Delta filters are added in the same way as any other filters.
 
   - Configure the parameters of the delta filter
 
-    - **Tolerance measure**:  Tells whether *Tolerance value* is specified as a percentage or an absolute value.
+    - **Tolerance Measure**:  Tells whether *Tolerance Value* is specified as a percentage or an absolute value.
     
-    - **Tolerance value**:  The tolerance percentage/value when comparing reading data. Only values that differ by more than this percentage/value will be considered as different from each other.
+    - **Tolerance Value**:  The tolerance percentage/value when comparing reading data. Only values that differ by more than this percentage/value will be considered as different from each other.
 
-    - **Reading processing mode**: Controls when the delta filter outputs a reading and what to include in this output reading. This is an enumeration with following options:
+    - **Reading Processing Mode**: Controls when the delta filter outputs a reading and what to include in this output reading. This is an enumeration with following options:
         a. Include full reading if any Datapoint exceeds tolerance
         b. Include full reading if all Datapoints exceed tolerance
         c. Include only the Datapoints that exceed tolerance
@@ -37,7 +37,7 @@ Delta filters are added in the same way as any other filters.
 
     - **Minimum Rate Units**: The units in which minimum rate is defined (per second, minute, hour or day)
 
-    - **Individual Tolerances**: A JSON document that can be used to define specific tolerance values for an asset. This is defined as a set of name/value pairs for those assets that should use a tolerance percentage/value other than the global tolerance value specified above. The following example would set the tolerance for the temperature asset to 15 and for the pressure asset to 5, in the same units as specified in *Tolerance measure*. All other assets would use the tolerance specified in *Tolerance value*.
+    - **Individual Tolerances**: A JSON document that can be used to define specific tolerance values for an asset. This is defined as a set of name/value pairs for those assets that should use a tolerance percentage/value other than the global tolerance value specified above. The following example would set the tolerance for the temperature asset to 15 and for the pressure asset to 5, in the same units as specified in *Tolerance Measure*. All other assets would use the tolerance specified in *Tolerance Value*.
 
       .. code-block:: json
 

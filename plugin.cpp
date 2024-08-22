@@ -44,14 +44,14 @@ static const char *default_config = QUOTE({
 			"options" : [ "percentage", "absolute value" ],
 			"default": "percentage",
 			"order" : "1",
-			"displayName" : "Tolerance measure"
+			"displayName" : "Tolerance Measure"
 			},
 		"tolerance": {
 			"description": "A percentage/absolute difference that will be tolerated when determining if values are equal.",
 			"type": "float",
 			"default": "0",
 			"order" : "2",
-			"displayName" : "Tolerance value"
+			"displayName" : "Tolerance Value"
 			},
 		"processingMode": {
 			"description": "Reading processing mode",
@@ -60,7 +60,7 @@ static const char *default_config = QUOTE({
                             "Include only the Datapoints that exceed tolerance" ],
 			"default": "Include full reading if any Datapoint exceeds tolerance",
 			"order" : "3",
-			"displayName" : "Reading processing mode"
+			"displayName" : "Reading Processing Mode"
 			},
 		"minRate": {
 			"description": "The minimum rate at which data must be sent",
