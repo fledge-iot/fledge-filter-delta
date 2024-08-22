@@ -36,11 +36,16 @@ class DeltaFilter : public FledgeFilter {
 		void	reconfigure(const std::string& newConfig);
 
         enum ProcessingMode {
-			ANY_DP_MATCHES=1,
-			ALL_DPs_MATCH,
-			ONLY_CHANGED_DPs,
+            ANY_DP_MATCHES=1,
+            ALL_DPs_MATCH,
+            ONLY_CHANGED_DPs,
             INVALID_MODE = -1
-		};
+        };
+        enum ToleranceMeasure {
+            PERCENTAGE=1,
+            ABSOLUTE_VALUE,
+            INVALID_VALUE = -1
+        };
 
         ProcessingMode parseProcessingMode(const std::string& s)
         {
@@ -60,7 +65,7 @@ class DeltaFilter : public FledgeFilter {
 			public:
 				DeltaData(Reading *);
 				~DeltaData();
-                bool evaluate(Reading *, double tolerance, struct timeval rate, 
+                bool evaluate(Reading *, DeltaFilter::ToleranceMeasure toleranceMeasure, double tolerance, struct timeval rate, 
                                 DeltaFilter::ProcessingMode processingMode, bool &sendOrig, Reading *readingToSend);
 				const std::string& 	getAssetName() { return m_lastSent->getAssetName(); };
 			private:
@@ -76,6 +81,7 @@ class DeltaFilter : public FledgeFilter {
 		std::map<std::string, double>
 				m_tolerances;
         ProcessingMode m_processingMode;
+        ToleranceMeasure m_toleranceMeasure;
 };
 
 

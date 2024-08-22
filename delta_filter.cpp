@@ -83,7 +83,7 @@ void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
 			m_state.insert(pair<string, DeltaData *>(delta->getAssetName(), delta));
 			out.push_back(*it);
 		}
-		else if (deltaIt->second->evaluate(reading, getTolerance(reading->getAssetName()), m_rate, 
+		else if (deltaIt->second->evaluate(reading, m_toleranceMeasure, getTolerance(reading->getAssetName()), m_rate, 
                                             m_processingMode, sendOrig, readingToSend))
 		{
             // evaluate's return value indicates whether a reading needs to be sent onwards
@@ -133,6 +133,46 @@ DeltaFilter::DeltaData::~DeltaData()
 }
 
 /**
+ * Check whether tolerance is exceeded given old and new DatapointValue objects
+ *
+ * @param oValue		old DatapointValue
+ * @param nValue		new DatapointValue
+ * @param toleranceMeasure	measure of tolerance; percentage or absolute value
+ * @param tolerance		tolrance percentage or absolute value
+ * @param absChange		returns absolute percentage or absolute change in Datapoint values
+ * 
+ * @return bool         whether tolerance was exceeded
+ */
+bool checkToleranceExceeded(const DatapointValue& oValue, const DatapointValue& nValue, 
+                                DeltaFilter::ToleranceMeasure toleranceMeasure, double tolerance, 
+                                double &absChange)
+{
+    if ( (oValue.getType() == DatapointValue::T_INTEGER || oValue.getType() == DatapointValue::T_FLOAT) &&  
+            (nValue.getType() == DatapointValue::T_INTEGER || nValue.getType() == DatapointValue::T_FLOAT) )
+    {
+        double prevValue = (oValue.getType() == DatapointValue::T_INTEGER) ? (double)oValue.toInt() : oValue.toDouble();
+        double newValue = (nValue.getType() == DatapointValue::T_INTEGER) ? (double)nValue.toInt() : nValue.toDouble();
+
+        if(toleranceMeasure == DeltaFilter::ToleranceMeasure::PERCENTAGE)
+        {
+            absChange = fabs(((newValue - prevValue) * 100.0) / prevValue);
+            return absChange > tolerance;
+        }
+        else
+        {
+            absChange = fabs(newValue - prevValue);
+            return absChange > tolerance;
+        }
+    }
+    else if (oValue.getType() == DatapointValue::T_STRING && nValue.getType() == DatapointValue::T_STRING)
+    {
+        return nValue.toString() != oValue.toString();
+    }
+    
+    return false;
+}
+
+/**
  * Evaluate a reading to determine if it needs to be sent
  * The conditions that cause it to be sent are:
  *
@@ -156,11 +196,12 @@ DeltaFilter::DeltaData::~DeltaData()
  */
 bool
 DeltaFilter::DeltaData::evaluate(Reading *candidate,
-				  double tolerance,
-				  struct timeval rate,
-                  DeltaFilter::ProcessingMode processingMode,
-                  bool &sendOrig,
-                  Reading *readingToSend)
+                                    ToleranceMeasure toleranceMeasure,
+                                    double tolerance,
+                                    struct timeval rate,
+                                    DeltaFilter::ProcessingMode processingMode,
+                                    bool &sendOrig,
+                                    Reading *readingToSend)
 {
 // bool		sendThis = false;
 bool        maxPeriodElapsed = false;
@@ -200,27 +241,25 @@ struct timeval	now, res;
 				// Different name, continue
 				continue;
 			}
-			
+
             // Get the reference to a DataPointValue
             const DatapointValue& oValue = (*oIt)->getData();
+
+            double absChange;
 
 			// Same datapoint name: check type
 			if (oValue.getType() != nValue.getType())
 			{
-				// Different type
+				// Numerical type
 				if ( (oValue.getType() == DatapointValue::T_INTEGER || oValue.getType() == DatapointValue::T_FLOAT) &&  
 						(nValue.getType() == DatapointValue::T_INTEGER || nValue.getType() == DatapointValue::T_FLOAT) )
 				{
-					double prevValue = (oValue.getType() == DatapointValue::T_INTEGER) ? (double)oValue.toInt() : oValue.toDouble();
-                    double newValue = (nValue.getType() == DatapointValue::T_INTEGER) ? (double)nValue.toInt() : nValue.toDouble();
-					
-					if (fabs(newValue - prevValue)
-						> (tolerance * fabs(prevValue)) / 100)
+					bool toleranceExceeded = checkToleranceExceeded(oValue, nValue, toleranceMeasure, tolerance, absChange);
+
+					if (toleranceExceeded)
 					{
-                        double percChange = fabs(((newValue - prevValue) * 100.0) / prevValue);
-                        Logger::getLogger()->info("Datapoint %s has %lf %% change",
-                                                    (*nIt)->getName().c_str(), percChange);
-						// sendThis = true;
+                        Logger::getLogger()->info("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), absChange,
+                                                    (toleranceMeasure == ToleranceMeasure::PERCENTAGE)? "%% " : "");
                         changedDPs.emplace((*nIt)->getName());
 					}
 				}
@@ -230,49 +269,44 @@ struct timeval	now, res;
 								(*nIt)->getName().c_str());
 				}
 			}
-			else
+			else // DPV type hasn't changed
 			{
 				switch(nValue.getType())
 				{
-					case DatapointValue::T_INTEGER:
-						if (abs(nValue.toInt() - oValue.toInt())
-							> (tolerance * abs(oValue.toInt())) / 100)
-						{
-                            double percChange = (abs(nValue.toInt() - oValue.toInt()) * 100.0) / abs(oValue.toInt());
-                            Logger::getLogger()->info("Datapoint %s has %lf %% change", 
-                                                        (*nIt)->getName().c_str(), percChange);
-							// sendThis = true;
-                            changedDPs.emplace((*nIt)->getName());
-						}
-						break;
-					case DatapointValue::T_FLOAT:
-						if (fabs(nValue.toDouble() - oValue.toDouble())
-							> (tolerance * fabs(oValue.toDouble())) / 100)
-						{
-                            double percChange = (fabs(nValue.toDouble() - oValue.toDouble()) * 100.0) / fabs(oValue.toDouble());
-                            Logger::getLogger()->info("Datapoint %s has %lf %% change", 
-                                                        (*nIt)->getName().c_str(), percChange);
-							// sendThis = true;
-                            changedDPs.emplace((*nIt)->getName());
-						}
-						break;
-					case DatapointValue::T_STRING:
-						if (nValue.toString().compare(oValue.toString()))
-						{
-                            Logger::getLogger()->info("Datapoint %s of STRING type has changed from '%s' to '%s'", 
-                                                        (*nIt)->getName().c_str(), oValue.toString().c_str(), nValue.toString().c_str());
-							// sendThis = true;
-                            changedDPs.emplace((*nIt)->getName());
-						}
-						break;
-					case DatapointValue::T_FLOAT_ARRAY:
-						// T_FLOAT_ARRAY not supported right now
-					default:
-						break;
-				}
-			}
-		}
-	}
+                    case DatapointValue::T_INTEGER:
+                    case DatapointValue::T_FLOAT:
+                        {
+                            bool toleranceExceeded = checkToleranceExceeded(oValue, nValue, toleranceMeasure, tolerance, absChange);
+                            if (toleranceExceeded)
+                            {
+                                Logger::getLogger()->info("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), absChange,
+                                                            (toleranceMeasure == ToleranceMeasure::PERCENTAGE)? "%% " : "");
+                                changedDPs.emplace((*nIt)->getName());
+                            }
+                        }
+                        break;
+
+                    case DatapointValue::T_STRING:
+                        {
+                            bool toleranceExceeded = checkToleranceExceeded(oValue, nValue, toleranceMeasure, tolerance, absChange);
+                            if (toleranceExceeded)
+                            {
+                                Logger::getLogger()->info("Datapoint %s of STRING type has changed from '%s' to '%s'", 
+                                                            (*nIt)->getName().c_str(), oValue.toString().c_str(), nValue.toString().c_str());
+                                changedDPs.emplace((*nIt)->getName());
+                            }
+                        }
+                        break;
+
+                    case DatapointValue::T_FLOAT_ARRAY:
+                        // T_FLOAT_ARRAY not supported right now
+                    
+                    default:
+                        break;
+                }
+            }
+        }
+    }
 
     Logger::getLogger()->debug("processingMode=%d, changedDPs.size()=%d, nDataPoints.size()=%d", 
                                 processingMode, changedDPs.size(), nDataPoints.size());
@@ -366,6 +400,8 @@ DeltaFilter::getTolerance(const std::string& asset)
 void
 DeltaFilter::handleConfig(const ConfigCategory& config)
 {
+    string toleranceMeasure = config.getValue("tolerance");
+    m_toleranceMeasure = (toleranceMeasure == "percentage") ? ToleranceMeasure::PERCENTAGE : ToleranceMeasure::ABSOLUTE_VALUE;
 	m_tolerance = strtof(config.getValue("tolerance").c_str(), NULL);
     
     string processingMode = config.getValue("processingMode");
