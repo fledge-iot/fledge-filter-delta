@@ -36,9 +36,9 @@ class DeltaFilter : public FledgeFilter {
 		void	reconfigure(const std::string& newConfig);
 
         enum ProcessingMode {
-            ANY_DP_MATCHES=1,
-            ALL_DPs_MATCH,
-            ONLY_CHANGED_DPs,
+            ANY_DATAPOINT_MATCHES=1,
+            ALL_DATAPOINTS_MATCH,
+            ONLY_CHANGED_DATAPOINTS,
             INVALID_MODE = -1
         };
         enum ToleranceMeasure {
@@ -49,12 +49,12 @@ class DeltaFilter : public FledgeFilter {
 
         ProcessingMode parseProcessingMode(const std::string& s)
         {
-            if(s.compare("Include full reading if any DP exceeds tolerance") == 0)
-                return ProcessingMode::ANY_DP_MATCHES;
-            else if(s.compare("Include full reading if all DPs exceed tolerance") == 0)
-                return ProcessingMode::ALL_DPs_MATCH;
-            else if(s.compare("Include only the DPs that exceed tolerance") == 0)
-                return ProcessingMode::ONLY_CHANGED_DPs;
+            if(s.compare("Include full reading if any Datapoint exceeds tolerance") == 0)
+                return ProcessingMode::ANY_DATAPOINT_MATCHES;
+            else if(s.compare("Include full reading if all Datapoints exceed tolerance") == 0)
+                return ProcessingMode::ALL_DATAPOINTS_MATCH;
+            else if(s.compare("Include only the Datapoints that exceed tolerance") == 0)
+                return ProcessingMode::ONLY_CHANGED_DATAPOINTS;
             else
                 return ProcessingMode::INVALID_MODE;
         }

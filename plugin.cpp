@@ -47,18 +47,18 @@ static const char *default_config = QUOTE({
 			"displayName" : "Tolerance measure"
 			},
 		"tolerance": {
-			"description": "A percentage difference that will be tolerated when determining if values are equal.",
+			"description": "A percentage/absolute difference that will be tolerated when determining if values are equal.",
 			"type": "float",
 			"default": "0",
 			"order" : "2",
-			"displayName" : "Tolerance %"
+			"displayName" : "Tolerance value"
 			},
 		"processingMode": {
 			"description": "Reading processing mode",
 			"type": "enumeration",
-			"options" : [ "Include full reading if any DP exceeds tolerance", "Include full reading if all DPs exceed tolerance", 
-                            "Include only the DPs that exceed tolerance" ],
-			"default": "Include full reading if any DP exceeds tolerance",
+			"options" : [ "Include full reading if any Datapoint exceeds tolerance", "Include full reading if all Datapoints exceed tolerance", 
+                            "Include only the Datapoints that exceed tolerance" ],
+			"default": "Include full reading if any Datapoint exceeds tolerance",
 			"order" : "3",
 			"displayName" : "Reading processing mode"
 			},
