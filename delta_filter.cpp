@@ -87,6 +87,7 @@ void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
                                             m_processingMode, sendOrig, readingToSend))
 		{
             // evaluate's return value indicates whether a reading needs to be sent onwards
+            Logger::getLogger()->info("#### evaluate returned TRUE: sendOrig=%s, readingToSend=%p", sendOrig?"true":"false", readingToSend);
             if(sendOrig)
             {
                 // out.push_back(move(*it)); // TODO: check if it is possible to just move the reading ptr to out vector
@@ -96,7 +97,10 @@ void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
             }
             else
             {
-                out.push_back(readingToSend); // readingToSend is allocated on heap
+                if(readingToSend)
+                    out.push_back(readingToSend); // readingToSend is allocated on heap
+                else
+                    Logger::getLogger()->error("******* UNEXPECTED: readingToSend is NULL");
                 delete *it;
             }
 		}
@@ -205,7 +209,7 @@ DeltaFilter::DeltaData::evaluate(Reading *candidate,
                                     struct timeval rate,
                                     DeltaFilter::ProcessingMode processingMode,
                                     bool &sendOrig,
-                                    Reading *readingToSend)
+                                    Reading* &readingToSend)
 {
 // bool		sendThis = false;
 bool        maxPeriodElapsed = false;
@@ -326,30 +330,35 @@ struct timeval	now, res;
 		m_lastSent = new Reading(*candidate);
         sendOrig = true;
         readingToSend = nullptr;
-        // out.emplace_back(new Reading(m_lastSent)); // TODO: this case can be optimized to use the origiinal reading itself
-        Logger::getLogger()->info("m_lastSent=%s", m_lastSent->toJSON().c_str());
+        // out.emplace_back(new Reading(m_lastSent)); // TODO: this case can be optimized to use the original reading itself
+        Logger::getLogger()->info("1. m_lastSent=%s", m_lastSent->toJSON().c_str());
 		candidate->getUserTimestamp(&m_lastSentTime);
         return true;
 	}
     else if(processingMode == ProcessingMode::ONLY_CHANGED_DATAPOINTS && !changedDPs.empty()) // changedDPs.size() < nDataPoints.size()
     {
+        // TODO: Need to maintain old values of unchanged DPs and new values of changed DPs in m_lastSent?
+        // It seems m_lastSent should have all DPs. What if new DPs get introduced mid-stream?
         delete m_lastSent;
-        Reading *m_lastSent = new Reading(*candidate);
+        m_lastSent = new Reading(*candidate);
 
-        // remove unchanged DPs from new reading m_lastSent
-        for(const auto &dp : nDataPoints)
+        sendOrig = false;
+        readingToSend = new Reading(*m_lastSent);
+
+        // remove unchanged DPs from readingToSend
+        // TODO: Interleaved iteration and deletion will cause issues?
+        for(const auto &dp : readingToSend->getReadingData())
         {
             string dpName = dp->getName();
             if(changedDPs.count(dpName) == 0)
             {
                 Logger::getLogger()->info("ONLY_CHANGED_DATAPOINTS: removing DP '%s'", dpName.c_str());
-                m_lastSent->removeDatapoint(dpName);
+                readingToSend->removeDatapoint(dpName);
             }
         }
-        Logger::getLogger()->info("m_lastSent=%s", m_lastSent->toJSON().c_str());
+        Logger::getLogger()->info("2. m_lastSent=%s", m_lastSent->toJSON().c_str());
+        Logger::getLogger()->info("2. readingToSend=%s", readingToSend->toJSON().c_str());
         // out.emplace_back(new Reading(m_lastSent));
-        sendOrig = false;
-        readingToSend = new Reading(*m_lastSent);
 
         candidate->getUserTimestamp(&m_lastSentTime);
         return true;
@@ -357,7 +366,8 @@ struct timeval	now, res;
 
     sendOrig = false;
     readingToSend = nullptr;
-
+    Logger::getLogger()->info("ONLY_CHANGED_DATAPOINTS: Not sending reading: sendOrig=%s, readingToSend=nullptr", sendOrig?"true":"false");
+    
 	return false;
 }
 
