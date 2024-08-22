@@ -174,7 +174,7 @@ bool checkToleranceExceeded(const DatapointValue& oValue, const DatapointValue& 
     }
     else if (oValue.getType() == DatapointValue::T_STRING && nValue.getType() == DatapointValue::T_STRING)
     {
-        return nValue.toString().compare(oValue.toString())==0;
+        return nValue.toString().compare(oValue.toString()) != 0;
     }
     
     return false;
@@ -366,7 +366,7 @@ struct timeval	now, res;
 
     sendOrig = false;
     readingToSend = nullptr;
-    Logger::getLogger()->info("ONLY_CHANGED_DATAPOINTS: Not sending reading: sendOrig=%s, readingToSend=nullptr", sendOrig?"true":"false");
+    Logger::getLogger()->info("Not sending reading: sendOrig=%s, readingToSend=nullptr", sendOrig?"true":"false");
     
 	return false;
 }
