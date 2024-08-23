@@ -424,7 +424,7 @@ void
 DeltaFilter::handleConfig(const ConfigCategory& config)
 {
     string toleranceMeasure = config.getValue("toleranceMeasure");
-    m_toleranceMeasure = (toleranceMeasure.compare("Percentage")==0) ? ToleranceMeasure::PERCENTAGE : ToleranceMeasure::ABSOLUTE_VALUE;
+    m_toleranceMeasure = (toleranceMeasure.compare("percentage")==0) ? ToleranceMeasure::PERCENTAGE : ToleranceMeasure::ABSOLUTE_VALUE;
 	
     m_tolerance = strtof(config.getValue("tolerance").c_str(), NULL);
     
