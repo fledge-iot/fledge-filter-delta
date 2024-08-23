@@ -336,7 +336,7 @@ struct timeval	now, res;
 		m_lastSent = new Reading(*candidate);
         sendOrig = true;
         readingToSend = nullptr;
-        // out.emplace_back(new Reading(m_lastSent)); // TODO: this case can be optimized to use the original reading itself
+        
         Logger::getLogger()->debug("SEND ORIGINAL READING: m_lastSent=%s", m_lastSent->toJSON().c_str());
 		candidate->getUserTimestamp(&m_lastSentTime);
         return true;
@@ -344,12 +344,12 @@ struct timeval	now, res;
     else if(processingMode == ProcessingMode::ONLY_CHANGED_DATAPOINTS && !changedDPs.empty()) // changedDPs.size() < nDataPoints.size()
     {
         // TODO: Need to maintain old values of unchanged DPs and new values of changed DPs in m_lastSent?
-        // It seems m_lastSent should have all DPs. What if new DPs get introduced mid-stream?
-        delete m_lastSent;
-        m_lastSent = new Reading(*candidate);
+        // It seems m_lastSent should have all DPs. What if some DPs get introduced/dropped mid-stream?
+
+        // retain original DP values in m_lastSent and update the changed/reported new DP values
 
         sendOrig = false;
-        readingToSend = new Reading(*m_lastSent);
+        readingToSend = new Reading(*candidate);
 
         // remove unchanged DPs from readingToSend
         // TODO: Interleaved iteration and deletion will cause issues?
@@ -360,9 +360,15 @@ struct timeval	now, res;
             {
                 readingToSend->removeDatapoint(dpName);
             }
+            else
+            {
+                // Update this DP's value in m_lastSent
+                m_lastSent->removeDatapoint(dpName);
+                m_lastSent->addDatapoint(new Datapoint(*candidate->getDatapoint(dpName)));
+            }
         }
         Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: readingToSend=%s", readingToSend->toJSON().c_str());
-        // out.emplace_back(new Reading(m_lastSent));
+        Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: m_lastSent=%s", m_lastSent->toJSON().c_str());
 
         candidate->getUserTimestamp(&m_lastSentTime);
         return true;
