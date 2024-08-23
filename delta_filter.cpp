@@ -141,10 +141,9 @@ DeltaFilter::DeltaData::~DeltaData()
  *
  * @param oValue		old DatapointValue
  * @param nValue		new DatapointValue
- * @param toleranceMeasure	measure of tolerance; percentage or absolute value
+ * @param toleranceMeasure	measure of tolerance: percentage or absolute value
  * @param tolerance		tolrance percentage or absolute value
  * @param absChange		returns absolute percentage or absolute change in Datapoint values
- * 
  * @return bool         whether tolerance was exceeded
  */
 bool checkToleranceExceeded(const DatapointValue& oValue, const DatapointValue& nValue, 
@@ -200,7 +199,14 @@ bool checkToleranceExceeded(const DatapointValue& oValue, const DatapointValue& 
  * and not real time. The two will be different because of buffering
  * without the services that make up a Fledge instance.
  *
- * @param candidate	The candidate reading
+ * @param candidate	        The candidate reading
+ * @param toleranceMeasure	Whether tolerance is specified in absolute terms or as a percentage
+ * @param tolerance	        Tolerance value in absolute terms or as a percentage (as per toleranceMeasure)
+ * @param rate	            Time interval after which a reading must be sent even if tolrance is not exceeded
+ * @param processingMode	Output reading processing mode
+ * @param sendOrig	        Whether to send the original reading
+ * @param readingToSend	    Reading to send after some DPs have been removed from the original reading
+ * @return                  Whether a reading should be sent out by the filter
  */
 bool
 DeltaFilter::DeltaData::evaluate(Reading *candidate,
@@ -211,7 +217,6 @@ DeltaFilter::DeltaData::evaluate(Reading *candidate,
                                     bool &sendOrig,
                                     Reading* &readingToSend)
 {
-// bool		sendThis = false;
 bool        maxPeriodElapsed = false;
 struct timeval	now, res;
 
@@ -320,11 +325,15 @@ struct timeval	now, res;
                                 processingMode, changedDPs.size(), nDataPoints.size());
 
     // Act according to processingMode config
+    // 1. Long enough time has elapsed to compulsarily send a reading 
+    // 2. Processing mode is ANY_DATAPOINT_MATCHES and atleast one DP has changed
+    // 3. Processing mode is ALL_DATAPOINTS_MATCH and all DPs have changed
+    // 4. Processing mode is ONLY_CHANGED_DATAPOINTS but all DPs have changed, so original reading can be forwarded as such
+    // Can combine condition 3 & 4 with just "changedDPs.size() == nDataPoints.size()", but retaining for better clarity
 	if ( maxPeriodElapsed ||
             (processingMode == ProcessingMode::ANY_DATAPOINT_MATCHES && !changedDPs.empty()) ||
             (processingMode == ProcessingMode::ALL_DATAPOINTS_MATCH && changedDPs.size() == nDataPoints.size()) ||
             (processingMode == ProcessingMode::ONLY_CHANGED_DATAPOINTS && changedDPs.size() == nDataPoints.size()))
-    // may be replace last 2 conditions above with just "changedDPs.size() == nDataPoints.size()"
 	{
 		delete m_lastSent;
 		m_lastSent = new Reading(*candidate);
@@ -415,7 +424,7 @@ void
 DeltaFilter::handleConfig(const ConfigCategory& config)
 {
     string toleranceMeasure = config.getValue("toleranceMeasure");
-    m_toleranceMeasure = (toleranceMeasure.compare("percentage")==0) ? ToleranceMeasure::PERCENTAGE : ToleranceMeasure::ABSOLUTE_VALUE;
+    m_toleranceMeasure = (toleranceMeasure.compare("Percentage")==0) ? ToleranceMeasure::PERCENTAGE : ToleranceMeasure::ABSOLUTE_VALUE;
 	m_tolerance = strtof(config.getValue("tolerance").c_str(), NULL);
     
     string processingMode = config.getValue("processingMode");
