@@ -66,6 +66,7 @@ static const char *default_config = QUOTE({
 		"minRate": {
 			"description": "The minimum rate at which data must be sent",
 			"type": "integer",
+			"minimum": "0",
 			"default": "0",
 			"order" : "4",
 			"displayName" : "Minimum Rate"
