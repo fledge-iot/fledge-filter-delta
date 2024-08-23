@@ -87,7 +87,6 @@ void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
                                             m_processingMode, sendOrig, readingToSend))
 		{
             // evaluate's return value indicates whether a reading needs to be sent onwards
-            Logger::getLogger()->info("#### evaluate returned TRUE: sendOrig=%s, readingToSend=%p", sendOrig?"true":"false", readingToSend);
             if(sendOrig)
             {
                 // out.push_back(move(*it)); // TODO: check if it is possible to just move the reading ptr to out vector
@@ -99,8 +98,6 @@ void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
             {
                 if(readingToSend)
                     out.push_back(readingToSend); // readingToSend is allocated on heap
-                else
-                    Logger::getLogger()->error("******* UNEXPECTED: readingToSend is NULL");
                 delete *it;
             }
 		}
@@ -159,14 +156,14 @@ bool checkToleranceExceeded(const DatapointValue& oValue, const DatapointValue& 
         if(toleranceMeasure == DeltaFilter::ToleranceMeasure::PERCENTAGE)
         {
             absChange = fabs(((newValue - prevValue) * 100.0) / prevValue);
-            Logger::getLogger()->info("prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
+            Logger::getLogger()->debug("prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
                                     prevValue, newValue, toleranceMeasure, tolerance, absChange);
             return absChange > tolerance;
         }
         else
         {
             absChange = fabs(newValue - prevValue);
-            Logger::getLogger()->info("prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
+            Logger::getLogger()->debug("prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
                                     prevValue, newValue, toleranceMeasure, tolerance, absChange);
             return absChange > tolerance;
         }
@@ -271,7 +268,7 @@ struct timeval	now, res;
 
 					if (toleranceExceeded)
 					{
-                        Logger::getLogger()->info("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), absChange,
+                        Logger::getLogger()->debug("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), absChange,
                                                     (toleranceMeasure == ToleranceMeasure::PERCENTAGE)? "% " : "");
                         changedDPs.emplace((*nIt)->getName());
 					}
@@ -292,7 +289,7 @@ struct timeval	now, res;
                             bool toleranceExceeded = checkToleranceExceeded(oValue, nValue, toleranceMeasure, tolerance, absChange);
                             if (toleranceExceeded)
                             {
-                                Logger::getLogger()->info("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), absChange,
+                                Logger::getLogger()->debug("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), absChange,
                                                             (toleranceMeasure == ToleranceMeasure::PERCENTAGE)? "% " : "");
                                 changedDPs.emplace((*nIt)->getName());
                             }
@@ -304,7 +301,7 @@ struct timeval	now, res;
                             bool toleranceExceeded = checkToleranceExceeded(oValue, nValue, toleranceMeasure, tolerance, absChange);
                             if (toleranceExceeded)
                             {
-                                Logger::getLogger()->info("Datapoint %s of STRING type has changed from '%s' to '%s'", 
+                                Logger::getLogger()->debug("Datapoint %s of STRING type has changed from '%s' to '%s'", 
                                                             (*nIt)->getName().c_str(), oValue.toString().c_str(), nValue.toString().c_str());
                                 changedDPs.emplace((*nIt)->getName());
                             }
@@ -321,7 +318,7 @@ struct timeval	now, res;
         }
     }
 
-    Logger::getLogger()->info("processingMode=%d, changedDPs.size()=%d, nDataPoints.size()=%d", 
+    Logger::getLogger()->debug("processingMode=%d, changedDPs.size()=%d, nDataPoints.size()=%d", 
                                 processingMode, changedDPs.size(), nDataPoints.size());
 
     // Act according to processingMode config
@@ -340,7 +337,7 @@ struct timeval	now, res;
         sendOrig = true;
         readingToSend = nullptr;
         // out.emplace_back(new Reading(m_lastSent)); // TODO: this case can be optimized to use the original reading itself
-        Logger::getLogger()->info("1. m_lastSent=%s", m_lastSent->toJSON().c_str());
+        Logger::getLogger()->debug("SEND ORIGINAL READING: m_lastSent=%s", m_lastSent->toJSON().c_str());
 		candidate->getUserTimestamp(&m_lastSentTime);
         return true;
 	}
@@ -361,12 +358,10 @@ struct timeval	now, res;
             string dpName = dp->getName();
             if(changedDPs.count(dpName) == 0)
             {
-                Logger::getLogger()->info("ONLY_CHANGED_DATAPOINTS: removing DP '%s'", dpName.c_str());
                 readingToSend->removeDatapoint(dpName);
             }
         }
-        Logger::getLogger()->info("2. m_lastSent=%s", m_lastSent->toJSON().c_str());
-        Logger::getLogger()->info("2. readingToSend=%s", readingToSend->toJSON().c_str());
+        Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: readingToSend=%s", readingToSend->toJSON().c_str());
         // out.emplace_back(new Reading(m_lastSent));
 
         candidate->getUserTimestamp(&m_lastSentTime);
@@ -375,7 +370,6 @@ struct timeval	now, res;
 
     sendOrig = false;
     readingToSend = nullptr;
-    Logger::getLogger()->info("Not sending reading: sendOrig=%s, readingToSend=nullptr", sendOrig?"true":"false");
     
 	return false;
 }
@@ -425,14 +419,15 @@ DeltaFilter::handleConfig(const ConfigCategory& config)
 {
     string toleranceMeasure = config.getValue("toleranceMeasure");
     m_toleranceMeasure = (toleranceMeasure.compare("Percentage")==0) ? ToleranceMeasure::PERCENTAGE : ToleranceMeasure::ABSOLUTE_VALUE;
-	m_tolerance = strtof(config.getValue("tolerance").c_str(), NULL);
+	
+    m_tolerance = strtof(config.getValue("tolerance").c_str(), NULL);
     
     string processingMode = config.getValue("processingMode");
     Logger::getLogger()->info("handleConfig(): processingMode='%s' = %d", processingMode.c_str(), parseProcessingMode(processingMode));
     m_processingMode = parseProcessingMode(processingMode);
     if(m_processingMode == DeltaFilter::INVALID_MODE)
     {
-        Logger::getLogger()->error("Delta filter: Invalid reading processing mode '%s'; changing to default '%s",
+        Logger::getLogger()->warn("Delta filter: Invalid reading processing mode '%s'; changing to default '%s",
                                         processingMode.c_str(), "Include full reading if any Datapoint exceeds tolerance");
         m_processingMode = DeltaFilter::ANY_DATAPOINT_MATCHES;
     }

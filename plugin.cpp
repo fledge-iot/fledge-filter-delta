@@ -49,7 +49,8 @@ static const char *default_config = QUOTE({
 		"tolerance": {
 			"description": "A percentage/absolute difference that will be tolerated when determining if values are equal.",
 			"type": "float",
-			"default": "0",
+			"minimum": "0.0",
+			"default": "1.0",
 			"order" : "2",
 			"displayName" : "Tolerance Value"
 			},
