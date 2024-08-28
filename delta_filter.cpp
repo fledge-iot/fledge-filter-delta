@@ -143,7 +143,7 @@ DeltaFilter::DeltaData::~DeltaData()
  * @param absChange		returns absolute percentage or absolute change in Datapoint values
  * @return bool         whether tolerance was exceeded
  */
-bool checkToleranceExceeded(const DatapointValue& oValue, const DatapointValue& nValue, 
+bool checkToleranceExceeded(const string &dpName, const DatapointValue& oValue, const DatapointValue& nValue, 
                                 DeltaFilter::ToleranceMeasure toleranceMeasure, double tolerance, 
                                 double &absChange)
 {
@@ -156,21 +156,29 @@ bool checkToleranceExceeded(const DatapointValue& oValue, const DatapointValue& 
         if(toleranceMeasure == DeltaFilter::ToleranceMeasure::PERCENTAGE)
         {
             absChange = fabs(((newValue - prevValue) * 100.0) / prevValue);
-            Logger::getLogger()->debug("prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
-                                    prevValue, newValue, toleranceMeasure, tolerance, absChange);
+            Logger::getLogger()->debug("dpName=%s, prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
+                                    dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, absChange);
             return absChange > tolerance;
         }
         else
         {
             absChange = fabs(newValue - prevValue);
-            Logger::getLogger()->debug("prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
-                                    prevValue, newValue, toleranceMeasure, tolerance, absChange);
+            Logger::getLogger()->debug("dpName=%s, prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
+                                    dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, absChange);
             return absChange > tolerance;
         }
     }
     else if (oValue.getType() == DatapointValue::T_STRING && nValue.getType() == DatapointValue::T_STRING)
     {
-        return nValue.toString().compare(oValue.toString()) != 0;
+        if(nValue.toString().compare(oValue.toString()) != 0)
+        {
+            Logger::getLogger()->debug("dpName=%s, STRING value change: prevValue=%s, newValue=%s", 
+                                        dpName.c_str(), oValue.toString().c_str(), nValue.toString().c_str());
+            return true;
+        }
+        else
+            return false;
+        // return nValue.toString().compare(oValue.toString()) != 0;
     }
     
     return false;
@@ -216,6 +224,8 @@ DeltaFilter::DeltaData::evaluate(Reading *candidate,
 {
 bool        maxPeriodElapsed = false;
 struct timeval	now, res;
+
+    Logger::getLogger()->debug("INPUT READING: '%s' ", candidate->toJSON().c_str());
 
 	if (rate.tv_sec != 0 || rate.tv_usec != 0)
 	{
@@ -268,7 +278,7 @@ struct timeval	now, res;
 				if ( (oValue.getType() == DatapointValue::T_INTEGER || oValue.getType() == DatapointValue::T_FLOAT) &&  
 						(nValue.getType() == DatapointValue::T_INTEGER || nValue.getType() == DatapointValue::T_FLOAT) )
 				{
-					bool toleranceExceeded = checkToleranceExceeded(oValue, nValue, toleranceMeasure, tolerance, absChange);
+					bool toleranceExceeded = checkToleranceExceeded((*nIt)->getName(), oValue, nValue, toleranceMeasure, tolerance, absChange);
 
 					if (toleranceExceeded)
 					{
@@ -290,7 +300,7 @@ struct timeval	now, res;
                     case DatapointValue::T_INTEGER:
                     case DatapointValue::T_FLOAT:
                         {
-                            bool toleranceExceeded = checkToleranceExceeded(oValue, nValue, toleranceMeasure, tolerance, absChange);
+                            bool toleranceExceeded = checkToleranceExceeded((*nIt)->getName(), oValue, nValue, toleranceMeasure, tolerance, absChange);
                             if (toleranceExceeded)
                             {
                                 Logger::getLogger()->debug("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), absChange,
@@ -302,7 +312,7 @@ struct timeval	now, res;
 
                     case DatapointValue::T_STRING:
                         {
-                            bool toleranceExceeded = checkToleranceExceeded(oValue, nValue, toleranceMeasure, tolerance, absChange);
+                            bool toleranceExceeded = checkToleranceExceeded((*nIt)->getName(), oValue, nValue, toleranceMeasure, tolerance, absChange);
                             if (toleranceExceeded)
                             {
                                 Logger::getLogger()->debug("Datapoint %s of STRING type has changed from '%s' to '%s'", 
@@ -329,6 +339,9 @@ struct timeval	now, res;
 
     Logger::getLogger()->debug("processingMode=%d, changedDPs.size()=%d, nDataPoints.size()=%d", 
                                 processingMode, changedDPs.size(), nDataPoints.size());
+
+    for(const auto & k : changedDPs)
+        Logger::getLogger()->debug("changedDPs[i]=%s", k.c_str());
 
     // Act according to processingMode config
     // 1. Long enough time has elapsed to compulsarily send a reading 
@@ -376,6 +389,8 @@ struct timeval	now, res;
                 if(m_lastSent->getDatapoint(dpName))
                     m_lastSent->removeDatapoint(dpName);
                 m_lastSent->addDatapoint(new Datapoint(*candidate->getDatapoint(dpName)));
+                Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: Updated m_lastSent: DP '%s' with value '%s'", 
+                                                dpName.c_str(), m_lastSent->getDatapoint(dpName)->toJSONProperty().c_str());
             }
         }
         Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: readingToSend=%s", readingToSend->toJSON().c_str());
