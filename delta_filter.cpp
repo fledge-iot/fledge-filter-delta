@@ -369,7 +369,9 @@ struct timeval	now, res;
         sendOrig = true;
         readingToSend = nullptr;
         
-        Logger::getLogger()->debug("SEND ORIGINAL READING: m_lastSent=%s", m_lastSent->toJSON().c_str());
+        Logger::getLogger()->debug("SENT READING: candidate=%s", candidate->toJSON().c_str());
+        Logger::getLogger()->debug("UPDATED REFERENCE: m_lastSent=%s", m_lastSent->toJSON().c_str());
+
 		candidate->getUserTimestamp(&m_lastSentTime);
         return true;
 	}
@@ -403,8 +405,8 @@ struct timeval	now, res;
                                                 dpName.c_str(), m_lastSent->getDatapoint(dpName)->toJSONProperty().c_str());
             }
         }
-        Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: readingToSend=%s", readingToSend->toJSON().c_str());
-        Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: m_lastSent=%s", m_lastSent->toJSON().c_str());
+        Logger::getLogger()->debug("SENT READING: readingToSend=%s", readingToSend->toJSON().c_str());
+        Logger::getLogger()->debug("UPDATED REFERENCE: m_lastSent=%s", m_lastSent->toJSON().c_str());
 
         candidate->getUserTimestamp(&m_lastSentTime);
         return true;
