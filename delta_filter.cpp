@@ -375,7 +375,7 @@ struct timeval	now, res;
 
         // remove unchanged DPs from readingToSend
         // TODO: Interleaved iteration and deletion will cause issues?
-        for(const auto &dp : readingToSend->getReadingData())
+        for(const auto &dp : candidate->getReadingData())
         {
             string dpName = dp->getName();
             if(changedDPs.count(dpName) == 0)
