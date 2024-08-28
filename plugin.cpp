@@ -51,6 +51,7 @@ static const char *default_config = QUOTE({
 			"type": "float",
 			"minimum": "0.0",
 			"default": "1.0",
+			"mandatory": "true",
 			"order" : "2",
 			"displayName" : "Tolerance Value"
 			},
@@ -68,6 +69,7 @@ static const char *default_config = QUOTE({
 			"type": "integer",
 			"minimum": "0",
 			"default": "0",
+			"mandatory": "true",
 			"order" : "4",
 			"displayName" : "Minimum Rate"
 			},
