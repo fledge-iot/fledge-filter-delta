@@ -354,8 +354,18 @@ struct timeval	now, res;
             (processingMode == ProcessingMode::ALL_DATAPOINTS_MATCH && changedDPs.size() == nDataPoints.size()) ||
             (processingMode == ProcessingMode::ONLY_CHANGED_DATAPOINTS && changedDPs.size() == nDataPoints.size()))
 	{
-		delete m_lastSent;
-		m_lastSent = new Reading(*candidate);
+		// delete m_lastSent;
+		// m_lastSent = new Reading(*candidate);
+        for(const auto &dp : candidate->getReadingData())
+        {
+            string dpName = dp->getName();
+            if(m_lastSent->getDatapoint(dpName))
+                m_lastSent->removeDatapoint(dpName);
+            m_lastSent->addDatapoint(new Datapoint(*candidate->getDatapoint(dpName)));
+            Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: Updated m_lastSent: DP '%s' with value '%s'", 
+                                            dpName.c_str(), m_lastSent->getDatapoint(dpName)->toJSONProperty().c_str());
+        }
+
         sendOrig = true;
         readingToSend = nullptr;
         
