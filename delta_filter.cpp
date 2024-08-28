@@ -241,6 +241,8 @@ struct timeval	now, res;
 	        // Get the reference to a DataPointValue
 		const DatapointValue& nValue = (*nIt)->getData();
 
+        bool dpFound = false;
+
 		// Iterate the datapoints of last reading sent
 		for (vector<Datapoint *>::const_iterator oIt = oDataPoints.begin();
 							 oIt != oDataPoints.end();
@@ -251,6 +253,8 @@ struct timeval	now, res;
 				// Different name, continue
 				continue;
 			}
+
+            dpFound  = true;
 
             // Get the reference to a DataPointValue
             const DatapointValue& oValue = (*oIt)->getData();
@@ -316,6 +320,11 @@ struct timeval	now, res;
                 }
             }
         }
+        if(!dpFound)
+        {
+            Logger::getLogger()->debug("Datapoint %s seen for the first time", (*nIt)->getName().c_str());
+            changedDPs.emplace((*nIt)->getName());
+        }
     }
 
     Logger::getLogger()->debug("processingMode=%d, changedDPs.size()=%d, nDataPoints.size()=%d", 
@@ -358,12 +367,14 @@ struct timeval	now, res;
             string dpName = dp->getName();
             if(changedDPs.count(dpName) == 0)
             {
+                Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: removing DP '%s' ", dpName.c_str());
                 readingToSend->removeDatapoint(dpName);
             }
             else
             {
                 // Update this DP's value in m_lastSent
-                m_lastSent->removeDatapoint(dpName);
+                if(m_lastSent->getDatapoint(dpName))
+                    m_lastSent->removeDatapoint(dpName);
                 m_lastSent->addDatapoint(new Datapoint(*candidate->getDatapoint(dpName)));
             }
         }
