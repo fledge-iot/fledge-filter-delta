@@ -146,13 +146,14 @@ bool exceedsTolerance(double a, double b, double tolerance, bool isPercentage = 
     double diff = std::fabs(a - b);
 
     if (isPercentage) {
-        // If tolerance is specified as a percentage, compute it relative to the larger value.
+        // Compare difference as a percentage of the average of a and b
+        double average = (std::fabs(a) + std::fabs(b)) / 2.0;
+        return (diff / average) > (tolerance / 100.0);
+    } else {
+        // Combine absolute and relative tolerance checks
         double largest = std::fmax(std::fabs(a), std::fabs(b));
-        tolerance = tolerance * largest / 100.0; // Convert percentage to absolute tolerance
+        return diff > tolerance && (diff / largest) > tolerance;
     }
-
-    // Check if the difference exceeds the computed (or given) tolerance
-    return diff > tolerance;
 }
 
 /**
@@ -175,19 +176,26 @@ bool checkToleranceExceeded(const string &dpName, const DatapointValue& oValue, 
         double prevValue = (oValue.getType() == DatapointValue::T_INTEGER) ? (double)oValue.toInt() : oValue.toDouble();
         double newValue = (nValue.getType() == DatapointValue::T_INTEGER) ? (double)nValue.toInt() : nValue.toDouble();
 
+        Logger::getLogger()->debug("Float epsilon = %.20lf", std::numeric_limits<float>::epsilon());
+        Logger::getLogger()->debug("Double epsilon = %.20lf", std::numeric_limits<double>::epsilon());
+        Logger::getLogger()->debug("Long Double epsilon = %.20lf", std::numeric_limits<long double>::epsilon());
+        double numerical_limit = 1e-10;
+
+        double tolerance2 = tolerance + std::fmax(std::fabs(prevValue), std::fabs(newValue)) * numerical_limit;
+
         if(toleranceMeasure == DeltaFilter::ToleranceMeasure::PERCENTAGE)
         {
             absChange = fabs(((newValue - prevValue) * 100.0) / prevValue);
-            Logger::getLogger()->debug("dpName=%s, prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
-                                    dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, absChange);
-            return exceedsTolerance(prevValue, newValue, tolerance, true);
+            Logger::getLogger()->debug("dpName=%s, prevValue=%.20lf, newValue=%.20lf, toleranceMeasure=%d, tolerance=%.20lf, absChange=%.20lf, tolerance2=%.20lf", 
+                                    dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, absChange, tolerance2);
+            return absChange > tolerance2;  // exceedsTolerance(prevValue, newValue, tolerance, true);
         }
         else
         {
             absChange = fabs(newValue - prevValue);
-            Logger::getLogger()->debug("dpName=%s, prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
-                                    dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, absChange);
-            return exceedsTolerance(prevValue, newValue, tolerance, false);
+            Logger::getLogger()->debug("dpName=%s, prevValue=%.20lf, newValue=%.20lf, toleranceMeasure=%d, tolerance=%.20lf, absChange=%.20lf, tolerance2=%.20lf", 
+                                    dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, absChange, tolerance2);
+            return absChange > tolerance2;  // exceedsTolerance(prevValue, newValue, tolerance, false);
         }
     }
     else if (oValue.getType() == DatapointValue::T_STRING && nValue.getType() == DatapointValue::T_STRING)
