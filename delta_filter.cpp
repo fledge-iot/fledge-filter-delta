@@ -134,12 +134,34 @@ DeltaFilter::DeltaData::~DeltaData()
 }
 
 /**
+ * Check whether tolerance is exceeded given old and new double values
+ *
+ * @param a		old value
+ * @param b		new value
+ * @param tolerance		tolerance percentage or absolute value
+ * @param isPercentage	whether tolerance is specified in percentage or absolute terms
+ * @return bool         whether tolerance was exceeded
+ */
+bool exceedsTolerance(double a, double b, double tolerance, bool isPercentage = false) {
+    double diff = std::fabs(a - b);
+
+    if (isPercentage) {
+        // If tolerance is specified as a percentage, compute it relative to the larger value.
+        double largest = std::fmax(std::fabs(a), std::fabs(b));
+        tolerance = tolerance * largest / 100.0; // Convert percentage to absolute tolerance
+    }
+
+    // Check if the difference exceeds the computed (or given) tolerance
+    return diff > tolerance;
+}
+
+/**
  * Check whether tolerance is exceeded given old and new DatapointValue objects
  *
  * @param oValue		old DatapointValue
  * @param nValue		new DatapointValue
  * @param toleranceMeasure	measure of tolerance: percentage or absolute value
- * @param tolerance		tolrance percentage or absolute value
+ * @param tolerance		tolerance percentage or absolute value
  * @param absChange		returns absolute percentage or absolute change in Datapoint values
  * @return bool         whether tolerance was exceeded
  */
@@ -158,14 +180,14 @@ bool checkToleranceExceeded(const string &dpName, const DatapointValue& oValue, 
             absChange = fabs(((newValue - prevValue) * 100.0) / prevValue);
             Logger::getLogger()->debug("dpName=%s, prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
                                     dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, absChange);
-            return absChange > tolerance;
+            return exceedsTolerance(prevValue, newValue, tolerance, true);
         }
         else
         {
             absChange = fabs(newValue - prevValue);
             Logger::getLogger()->debug("dpName=%s, prevValue=%lf, newValue=%lf, toleranceMeasure=%d, tolerance=%lf, absChange=%lf", 
                                     dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, absChange);
-            return absChange > tolerance;
+            return exceedsTolerance(prevValue, newValue, tolerance, false);
         }
     }
     else if (oValue.getType() == DatapointValue::T_STRING && nValue.getType() == DatapointValue::T_STRING)
@@ -343,7 +365,7 @@ struct timeval	now, res;
     for(const auto & k : changedDPs)
         Logger::getLogger()->debug("changedDPs[i]=%s", k.c_str());
 
-    // Act according to processingMode config
+    // Act according to processingMode config. Send current reading if:
     // 1. Long enough time has elapsed to compulsarily send a reading 
     // 2. Processing mode is ANY_DATAPOINT_MATCHES and atleast one DP has changed
     // 3. Processing mode is ALL_DATAPOINTS_MATCH and all DPs have changed
@@ -354,20 +376,20 @@ struct timeval	now, res;
             (processingMode == ProcessingMode::ALL_DATAPOINTS_MATCH && changedDPs.size() == nDataPoints.size()) ||
             (processingMode == ProcessingMode::ONLY_CHANGED_DATAPOINTS && changedDPs.size() == nDataPoints.size()))
 	{
-		// delete m_lastSent;
-		// m_lastSent = new Reading(*candidate);
+        // Send current reading out
+        sendOrig = true;
+        readingToSend = nullptr;
+
+		// Update new values of DPs in m_lastSent
         for(const auto &dp : candidate->getReadingData())
         {
             string dpName = dp->getName();
             if(m_lastSent->getDatapoint(dpName))
                 m_lastSent->removeDatapoint(dpName);
             m_lastSent->addDatapoint(new Datapoint(*candidate->getDatapoint(dpName)));
-            Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: Updated m_lastSent: DP '%s' with value '%s'", 
+            Logger::getLogger()->debug("FORWARDING FULL READING: Updated m_lastSent: DP '%s' with value '%s'", 
                                             dpName.c_str(), m_lastSent->getDatapoint(dpName)->toJSONProperty().c_str());
         }
-
-        sendOrig = true;
-        readingToSend = nullptr;
         
         Logger::getLogger()->debug("SENT READING: candidate=%s", candidate->toJSON().c_str());
         Logger::getLogger()->debug("UPDATED REFERENCE: m_lastSent=%s", m_lastSent->toJSON().c_str());
@@ -375,12 +397,9 @@ struct timeval	now, res;
 		candidate->getUserTimestamp(&m_lastSentTime);
         return true;
 	}
-    else if(processingMode == ProcessingMode::ONLY_CHANGED_DATAPOINTS && !changedDPs.empty()) // changedDPs.size() < nDataPoints.size()
+    else if(processingMode == ProcessingMode::ONLY_CHANGED_DATAPOINTS && !changedDPs.empty())
     {
-        // TODO: Need to maintain old values of unchanged DPs and new values of changed DPs in m_lastSent?
-        // It seems m_lastSent should have all DPs. What if some DPs get introduced/dropped mid-stream?
-
-        // retain original DP values in m_lastSent and update the changed/reported new DP values
+        // Need to maintain last sent values of unchanged DPs and new values of changed DPs being sent now
 
         sendOrig = false;
         readingToSend = new Reading(*candidate);
