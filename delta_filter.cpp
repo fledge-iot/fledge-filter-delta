@@ -183,14 +183,14 @@ bool checkToleranceExceeded(const string &dpName, const DatapointValue& oValue, 
         Logger::getLogger()->debug("dpName=%s, prevValue=%.20lf, newValue=%.20lf, toleranceMeasure=%d, tolerance=%.20lf", 
                                         dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance);
 
-        // double adjustedTolerance = tolerance + std::fmax(std::fabs(prevValue), std::fabs(newValue)) * std::numeric_limits<double>::epsilon();
+        double adjustedTolerance = tolerance + std::fmax(std::fabs(prevValue), std::fabs(newValue)) * std::numeric_limits<double>::epsilon();
         
         Logger::getLogger()->debug("LHS = %.20lf", newValue);
         Logger::getLogger()->debug("RHS = %.20lf", prevValue + tolerance + tolerance * std::numeric_limits<double>::epsilon());
         Logger::getLogger()->debug("change = %.20lf", change);
-        // Logger::getLogger()->debug("adjustedTolerance = %.20lf", adjustedTolerance);
+        Logger::getLogger()->debug("adjustedTolerance = %.20lf", adjustedTolerance);
         // return newValue > (prevValue + tolerance + tolerance * std::numeric_limits<double>::epsilon());
-        return change > (tolerance + std::numeric_limits<double>::epsilon());
+        return change > adjustedTolerance;
 
         // Logger::getLogger()->debug("Float epsilon = %.20lf", std::numeric_limits<float>::epsilon());  // 0.00000011920928955078
         // Logger::getLogger()->debug("Double epsilon = %.20lf", std::numeric_limits<double>::epsilon());  // 0.00000000000000022204
