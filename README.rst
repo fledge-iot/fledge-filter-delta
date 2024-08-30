@@ -5,7 +5,7 @@ Fledge delta Filter
 Fledge "delta" filter passes deltas of reading data. A new reading
 is only sent onwards if the value of one or more data points in the new
 reading differs from the previous reading sent by the specified tolerance
-percentage.
+percentage/value.
 
 By defining a minimum rate it is possible to force readings to be sent
 at that defined rate when there is no change in the value of the reading.
@@ -17,10 +17,20 @@ Configuration items
 
 The following configuration items are supported:
 
+  toleranceMeasure
+    Tells whether 'tolerance' is specified as a percentage or an absolute value.
+
   tolerance
     The percentage tolerance when comparing reading data. Only values
     that differ by more than this percentage will be considered as different
     from each other.
+
+  processingMode
+    Controls when the delta filter outputs a reading and what to include in this 
+    output reading. This is an enumeration with following options:
+        a. Include full reading if any Datapoint exceeds tolerance
+        b. Include full reading if all Datapoints exceed tolerance
+        c. Include only the Datapoints that exceed tolerance
 
   minRate
     The minimum rate at which readings should be sent. This is the rate at
@@ -29,6 +39,12 @@ The following configuration items are supported:
   rateUnit
     The units in which minRate is define (per second, minute, hour or day)
 
+  overrides
+    A JSON document that can be used to define specific tolerance values for an 
+    asset. This is defined as a set of name/value pairs for those assets that 
+    should use a tolerance percentage/value other than the global tolerance value 
+    specified above.
+
 Example
 -------
 
@@ -36,14 +52,23 @@ Send only readings that differ by more than 1 percent from the the
 previous reading sent or at a rate of one reading every half hour if
 the change is less than this.
 
+  toleranceMeasure
+    percentage
+
   tolerance
     1
+
+  processingMode
+    Include full reading if any Datapoint exceeds tolerance
 
   minRate
     2
 
   rateUnit
     per hour
+
+  overrides
+    { "temperature" : 15, "pressure" : 5 }
 
 Build
 -----

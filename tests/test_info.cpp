@@ -15,7 +15,7 @@ TEST(DELTA_INFO, PluginInfo)
 {
 	PLUGIN_INFORMATION *info = plugin_info();
 	ASSERT_STREQ(info->name, "delta");
-	ASSERT_EQ(info->type, PLUGIN_TYPE_FILTER);
+	ASSERT_STREQ(info->type, PLUGIN_TYPE_FILTER);
 }
 
 TEST(DELTA_INFO, PluginInfoConfigParse)
