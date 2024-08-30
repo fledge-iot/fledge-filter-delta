@@ -163,12 +163,12 @@ bool exceedsTolerance(double a, double b, double tolerance, bool isPercentage = 
  * @param nValue		new DatapointValue
  * @param toleranceMeasure	measure of tolerance: percentage or absolute value
  * @param tolerance		tolerance percentage or absolute value
- * @param absChange		returns absolute percentage or absolute change in Datapoint values
+ * @param change		returns absolute percentage or absolute change in Datapoint values
  * @return bool         whether tolerance was exceeded
  */
 bool checkToleranceExceeded(const string &dpName, const DatapointValue& oValue, const DatapointValue& nValue, 
                                 DeltaFilter::ToleranceMeasure toleranceMeasure, double tolerance, 
-                                double &absChange)
+                                double &change)
 {
     if ( (oValue.getType() == DatapointValue::T_INTEGER || oValue.getType() == DatapointValue::T_FLOAT) &&  
             (nValue.getType() == DatapointValue::T_INTEGER || nValue.getType() == DatapointValue::T_FLOAT) )
@@ -176,27 +176,42 @@ bool checkToleranceExceeded(const string &dpName, const DatapointValue& oValue, 
         double prevValue = (oValue.getType() == DatapointValue::T_INTEGER) ? (double)oValue.toInt() : oValue.toDouble();
         double newValue = (nValue.getType() == DatapointValue::T_INTEGER) ? (double)nValue.toInt() : nValue.toDouble();
 
-        Logger::getLogger()->debug("Float epsilon = %.20lf", std::numeric_limits<float>::epsilon());
-        Logger::getLogger()->debug("Double epsilon = %.20lf", std::numeric_limits<double>::epsilon());
-        Logger::getLogger()->debug("Long Double epsilon = %.20lf", std::numeric_limits<long double>::epsilon());
-        double numerical_limit = 1e-10;
-
-        double tolerance2 = tolerance + std::fmax(std::fabs(prevValue), std::fabs(newValue)) * numerical_limit;
-
+        change = fabs(newValue - prevValue);
         if(toleranceMeasure == DeltaFilter::ToleranceMeasure::PERCENTAGE)
-        {
-            absChange = fabs(((newValue - prevValue) * 100.0) / prevValue);
-            Logger::getLogger()->debug("dpName=%s, prevValue=%.20lf, newValue=%.20lf, toleranceMeasure=%d, tolerance=%.20lf, absChange=%.20lf, tolerance2=%.20lf", 
-                                    dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, absChange, tolerance2);
-            return absChange > tolerance2;  // exceedsTolerance(prevValue, newValue, tolerance, true);
-        }
-        else
-        {
-            absChange = fabs(newValue - prevValue);
-            Logger::getLogger()->debug("dpName=%s, prevValue=%.20lf, newValue=%.20lf, toleranceMeasure=%d, tolerance=%.20lf, absChange=%.20lf, tolerance2=%.20lf", 
-                                    dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, absChange, tolerance2);
-            return absChange > tolerance2;  // exceedsTolerance(prevValue, newValue, tolerance, false);
-        }
+            change = (change * 100.0) / prevValue;
+
+        Logger::getLogger()->debug("dpName=%s, prevValue=%.20lf, newValue=%.20lf, toleranceMeasure=%d, tolerance=%.20lf", 
+                                        dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance);
+
+        // double adjustedTolerance = tolerance + std::fmax(std::fabs(prevValue), std::fabs(newValue)) * std::numeric_limits<double>::epsilon();
+        
+        Logger::getLogger()->debug("LHS = %.20lf", newValue);
+        Logger::getLogger()->debug("RHS = %.20lf", prevValue + tolerance + tolerance * std::numeric_limits<double>::epsilon());
+        Logger::getLogger()->debug("change = %.20lf", change);
+        // Logger::getLogger()->debug("adjustedTolerance = %.20lf", adjustedTolerance);
+        // return newValue > (prevValue + tolerance + tolerance * std::numeric_limits<double>::epsilon());
+        return change > (tolerance + std::numeric_limits<double>::epsilon());
+
+        // Logger::getLogger()->debug("Float epsilon = %.20lf", std::numeric_limits<float>::epsilon());  // 0.00000011920928955078
+        // Logger::getLogger()->debug("Double epsilon = %.20lf", std::numeric_limits<double>::epsilon());  // 0.00000000000000022204
+        // double numerical_limit = 1e-12;
+        // // Compute a relative tolerance to account for precision issues
+        // // double relativeTolerance = std::fmax(std::fabs(prevValue), std::fabs(newValue)) * std::numeric_limits<double>::epsilon();
+
+        // // double fuzzFactor = 10 * std::numeric_limits<double>::epsilon();
+
+        // // double tolerance2 = tolerance + relativeTolerance; // fuzzFactor;  // std::fmax(std::fabs(prevValue), std::fabs(newValue)) * numerical_limit;
+
+        // double excess = std::fabs(change - tolerance);
+        // double acceptableExcess = tolerance * std::numeric_limits<double>::epsilon();
+
+        // Logger::getLogger()->debug("dpName=%s, prevValue=%.20lf, newValue=%.20lf, toleranceMeasure=%d, tolerance=%.20lf, change=%.20lf, acceptableExcess=%.20lf, excess=%.20lf", 
+        //                                 dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, change, acceptableExcess, excess);
+
+        // if (excess <= acceptableExcess)
+        //     return false;
+        // else
+        //     return change > tolerance;
     }
     else if (oValue.getType() == DatapointValue::T_STRING && nValue.getType() == DatapointValue::T_STRING)
     {
@@ -299,7 +314,7 @@ struct timeval	now, res;
             // Get the reference to a DataPointValue
             const DatapointValue& oValue = (*oIt)->getData();
 
-            double absChange;
+            double change;
 
 			// Same datapoint name: check type
 			if (oValue.getType() != nValue.getType())
@@ -308,11 +323,11 @@ struct timeval	now, res;
 				if ( (oValue.getType() == DatapointValue::T_INTEGER || oValue.getType() == DatapointValue::T_FLOAT) &&  
 						(nValue.getType() == DatapointValue::T_INTEGER || nValue.getType() == DatapointValue::T_FLOAT) )
 				{
-					bool toleranceExceeded = checkToleranceExceeded((*nIt)->getName(), oValue, nValue, toleranceMeasure, tolerance, absChange);
+					bool toleranceExceeded = checkToleranceExceeded((*nIt)->getName(), oValue, nValue, toleranceMeasure, tolerance, change);
 
 					if (toleranceExceeded)
 					{
-                        Logger::getLogger()->debug("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), absChange,
+                        Logger::getLogger()->debug("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), change,
                                                     (toleranceMeasure == ToleranceMeasure::PERCENTAGE)? "% " : "");
                         changedDPs.emplace((*nIt)->getName());
 					}
@@ -330,10 +345,10 @@ struct timeval	now, res;
                     case DatapointValue::T_INTEGER:
                     case DatapointValue::T_FLOAT:
                         {
-                            bool toleranceExceeded = checkToleranceExceeded((*nIt)->getName(), oValue, nValue, toleranceMeasure, tolerance, absChange);
+                            bool toleranceExceeded = checkToleranceExceeded((*nIt)->getName(), oValue, nValue, toleranceMeasure, tolerance, change);
                             if (toleranceExceeded)
                             {
-                                Logger::getLogger()->debug("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), absChange,
+                                Logger::getLogger()->debug("Datapoint %s has %lf %schange", (*nIt)->getName().c_str(), change,
                                                             (toleranceMeasure == ToleranceMeasure::PERCENTAGE)? "% " : "");
                                 changedDPs.emplace((*nIt)->getName());
                             }
@@ -342,7 +357,7 @@ struct timeval	now, res;
 
                     case DatapointValue::T_STRING:
                         {
-                            bool toleranceExceeded = checkToleranceExceeded((*nIt)->getName(), oValue, nValue, toleranceMeasure, tolerance, absChange);
+                            bool toleranceExceeded = checkToleranceExceeded((*nIt)->getName(), oValue, nValue, toleranceMeasure, tolerance, change);
                             if (toleranceExceeded)
                             {
                                 Logger::getLogger()->debug("Datapoint %s of STRING type has changed from '%s' to '%s'", 
@@ -491,7 +506,8 @@ DeltaFilter::handleConfig(const ConfigCategory& config)
     string toleranceMeasure = config.getValue("toleranceMeasure");
     m_toleranceMeasure = (toleranceMeasure.compare("percentage")==0) ? ToleranceMeasure::PERCENTAGE : ToleranceMeasure::ABSOLUTE_VALUE;
 	
-    m_tolerance = strtof(config.getValue("tolerance").c_str(), NULL);
+    m_tolerance = strtod(config.getValue("tolerance").c_str(), NULL);
+    Logger::getLogger()->info("handleConfig(): toleranceStr='%s', m_tolerance=%.20lf", config.getValue("tolerance").c_str(), m_tolerance);
     
     string processingMode = config.getValue("processingMode");
     Logger::getLogger()->info("handleConfig(): processingMode='%s' = %d", processingMode.c_str(), parseProcessingMode(processingMode));
