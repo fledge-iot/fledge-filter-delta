@@ -84,5 +84,4 @@ class DeltaFilter : public FledgeFilter {
         ToleranceMeasure m_toleranceMeasure;
 };
 
-
 #endif

@@ -1,5 +1,6 @@
 .. Images
 .. |delta| image:: images/delta.jpg
+.. |delta2| image:: images/delta2.jpg
 
 Delta Filter
 ============
@@ -36,6 +37,11 @@ Delta filters are added in the same way as any other filters.
     - **Minimum Rate**: The minimum rate at which readings should be sent. This is the rate at which readings will appear if there is no change in value.
 
     - **Minimum Rate Units**: The units in which minimum rate is defined (per second, minute, hour or day)
+
+
++---------+
+| |delta2| |
++---------+
 
     - **Individual Tolerances**: A JSON document that can be used to define specific tolerance values for an asset. This is defined as a set of name/value pairs for those assets that should use a tolerance percentage/value other than the global tolerance value specified above. The following example would set the tolerance for the temperature asset to 15 and for the pressure asset to 5, in the same units as specified in *Tolerance Measure*. All other assets would use the tolerance specified in *Tolerance Value*.
 

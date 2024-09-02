@@ -41,8 +41,8 @@ static const char *default_config = QUOTE({
         "toleranceMeasure": {
 			"description": "Whether tolerance is specified as a percentage or in absolute terms",
 			"type": "enumeration",
-			"options" : [ "percentage", "absolute value" ],
-			"default": "percentage",
+			"options" : [ "Percentage", "Absolute Value" ],
+			"default": "Percentage",
 			"order" : "1",
 			"displayName" : "Tolerance Measure"
 			},
@@ -86,6 +86,7 @@ static const char *default_config = QUOTE({
 			"type": "JSON",
 			"default": "{ }",
 			"order" : "6",
+			"group": "Individual Tolerances",
 			"displayName" : "Individual Tolerances"
 			}
 	});

@@ -134,29 +134,6 @@ DeltaFilter::DeltaData::~DeltaData()
 }
 
 /**
- * Check whether tolerance is exceeded given old and new double values
- *
- * @param a		old value
- * @param b		new value
- * @param tolerance		tolerance percentage or absolute value
- * @param isPercentage	whether tolerance is specified in percentage or absolute terms
- * @return bool         whether tolerance was exceeded
- */
-bool exceedsTolerance(double a, double b, double tolerance, bool isPercentage = false) {
-    double diff = std::fabs(a - b);
-
-    if (isPercentage) {
-        // Compare difference as a percentage of the average of a and b
-        double average = (std::fabs(a) + std::fabs(b)) / 2.0;
-        return (diff / average) > (tolerance / 100.0);
-    } else {
-        // Combine absolute and relative tolerance checks
-        double largest = std::fmax(std::fabs(a), std::fabs(b));
-        return diff > tolerance && (diff / largest) > tolerance;
-    }
-}
-
-/**
  * Check whether tolerance is exceeded given old and new DatapointValue objects
  *
  * @param oValue		old DatapointValue
@@ -183,35 +160,11 @@ bool checkToleranceExceeded(const string &dpName, const DatapointValue& oValue, 
         Logger::getLogger()->debug("dpName=%s, prevValue=%.20lf, newValue=%.20lf, toleranceMeasure=%d, tolerance=%.20lf", 
                                         dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance);
 
+        // std::numeric_limits<double>::epsilon() = 0.00000000000000022204
         double adjustedTolerance = tolerance + std::fmax(std::fabs(prevValue), std::fabs(newValue)) * std::numeric_limits<double>::epsilon();
         
-        Logger::getLogger()->debug("LHS = %.20lf", newValue);
-        Logger::getLogger()->debug("RHS = %.20lf", prevValue + tolerance + tolerance * std::numeric_limits<double>::epsilon());
-        Logger::getLogger()->debug("change = %.20lf", change);
-        Logger::getLogger()->debug("adjustedTolerance = %.20lf", adjustedTolerance);
-        // return newValue > (prevValue + tolerance + tolerance * std::numeric_limits<double>::epsilon());
+        Logger::getLogger()->debug("adjustedTolerance = %.20lf, change = %.20lf", adjustedTolerance, change);
         return change > adjustedTolerance;
-
-        // Logger::getLogger()->debug("Float epsilon = %.20lf", std::numeric_limits<float>::epsilon());  // 0.00000011920928955078
-        // Logger::getLogger()->debug("Double epsilon = %.20lf", std::numeric_limits<double>::epsilon());  // 0.00000000000000022204
-        // double numerical_limit = 1e-12;
-        // // Compute a relative tolerance to account for precision issues
-        // // double relativeTolerance = std::fmax(std::fabs(prevValue), std::fabs(newValue)) * std::numeric_limits<double>::epsilon();
-
-        // // double fuzzFactor = 10 * std::numeric_limits<double>::epsilon();
-
-        // // double tolerance2 = tolerance + relativeTolerance; // fuzzFactor;  // std::fmax(std::fabs(prevValue), std::fabs(newValue)) * numerical_limit;
-
-        // double excess = std::fabs(change - tolerance);
-        // double acceptableExcess = tolerance * std::numeric_limits<double>::epsilon();
-
-        // Logger::getLogger()->debug("dpName=%s, prevValue=%.20lf, newValue=%.20lf, toleranceMeasure=%d, tolerance=%.20lf, change=%.20lf, acceptableExcess=%.20lf, excess=%.20lf", 
-        //                                 dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance, change, acceptableExcess, excess);
-
-        // if (excess <= acceptableExcess)
-        //     return false;
-        // else
-        //     return change > tolerance;
     }
     else if (oValue.getType() == DatapointValue::T_STRING && nValue.getType() == DatapointValue::T_STRING)
     {
@@ -222,40 +175,43 @@ bool checkToleranceExceeded(const string &dpName, const DatapointValue& oValue, 
             return true;
         }
         else
+        {
             return false;
-        // return nValue.toString().compare(oValue.toString()) != 0;
+        }
     }
     
     return false;
 }
 
 /**
- * Evaluate a reading to determine if it needs to be sent
+ * Evaluate a reading to determine if it needs to be sent.
  * The conditions that cause it to be sent are:
  *
- *	The minimum rate, if set requires a value to be sent
+ *	1. The minimum rate, if set requires a value to be sent
  *
- *	The difference between this value and the last value send
- *	exceeds the tolerance percentage.
+ *	2. The difference between new value and the last sent value for a 
+ *  datapoint exceeds the configured tolerance and processing mode 
+ *  is suitable w.r.t. the set of changed datapoints.
  *
- * If the reading is sent a copy is made and held in the DeltaData
- * class.
- *
- * When an asset has multiple data points if any one data point change
- * exceeds the tolerance then the entire reading is sent.
+ * If the reading is sent, a copy of sent datapoints is stored and held
+ * in a reading object in the DeltaData class object.
  *
  * Note, the time used when considering rate is not the current time
  * but the time in the readings as the rate referes to the reading rate
- * and not real time. The two will be different because of buffering
- * without the services that make up a Fledge instance.
+ * and not real time. The two may be different because of buffering
+ * within the services that make up a Fledge instance.
  *
  * @param candidate	        The candidate reading
- * @param toleranceMeasure	Whether tolerance is specified in absolute terms or as a percentage
- * @param tolerance	        Tolerance value in absolute terms or as a percentage (as per toleranceMeasure)
- * @param rate	            Time interval after which a reading must be sent even if tolrance is not exceeded
+ * @param toleranceMeasure	Whether tolerance is specified in absolute terms or 
+ *                          as a percentage
+ * @param tolerance	        Tolerance value in absolute terms or as a percentage 
+ *                          (as per toleranceMeasure)
+ * @param rate	            Time interval after which a reading must be sent even 
+ *                          if tolerance is not exceeded
  * @param processingMode	Output reading processing mode
  * @param sendOrig	        Whether to send the original reading
- * @param readingToSend	    Reading to send after some DPs have been removed from the original reading
+ * @param readingToSend	    Reading to send after some DPs have been removed from 
+ *                          the original reading
  * @return                  Whether a reading should be sent out by the filter
  */
 bool
@@ -267,7 +223,7 @@ DeltaFilter::DeltaData::evaluate(Reading *candidate,
                                     bool &sendOrig,
                                     Reading* &readingToSend)
 {
-bool        maxPeriodElapsed = false;
+bool    maxPeriodElapsed = false;
 struct timeval	now, res;
 
     Logger::getLogger()->debug("INPUT READING: '%s' ", candidate->toJSON().c_str());
@@ -279,6 +235,7 @@ struct timeval	now, res;
 		if (timercmp(&now, &res, >))
 		{
 			maxPeriodElapsed = true;
+            // can skip below for loop completely in this case
 		}
 	}
 
@@ -286,7 +243,7 @@ struct timeval	now, res;
 	const vector<Datapoint *>& oDataPoints = m_lastSent->getReadingData();
 	const vector<Datapoint *>& nDataPoints = candidate->getReadingData();
 
-    unordered_set<string> changedDPs;
+	unordered_set<string> changedDPs;
 
 	// Iterate the datapoints of NEW reading
 	for (vector<Datapoint *>::const_iterator nIt = nDataPoints.begin();
@@ -296,7 +253,7 @@ struct timeval	now, res;
 	        // Get the reference to a DataPointValue
 		const DatapointValue& nValue = (*nIt)->getData();
 
-        bool dpFound = false;
+		bool dpFound = false;
 
 		// Iterate the datapoints of last reading sent
 		for (vector<Datapoint *>::const_iterator oIt = oDataPoints.begin();
@@ -309,12 +266,12 @@ struct timeval	now, res;
 				continue;
 			}
 
-            dpFound  = true;
+			dpFound  = true;
 
-            // Get the reference to a DataPointValue
-            const DatapointValue& oValue = (*oIt)->getData();
+			// Get the reference to DataPointValue
+			const DatapointValue& oValue = (*oIt)->getData();
 
-            double change;
+			double change;
 
 			// Same datapoint name: check type
 			if (oValue.getType() != nValue.getType())
@@ -427,19 +384,18 @@ struct timeval	now, res;
         sendOrig = false;
         readingToSend = new Reading(*candidate);
 
-        // remove unchanged DPs from readingToSend
-        // TODO: Interleaved iteration and deletion will cause issues?
+        // remove unchanged DPs from readingToSend and update/add changed DPs in m_lastSent
         for(const auto &dp : candidate->getReadingData())
         {
             string dpName = dp->getName();
             if(changedDPs.count(dpName) == 0)
             {
-                Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: removing DP '%s' ", dpName.c_str());
+                Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: removing unchanged DP '%s' ", dpName.c_str());
                 readingToSend->removeDatapoint(dpName);
             }
             else
             {
-                // Update this DP's value in m_lastSent
+                // Update this changed DP's value in m_lastSent
                 if(m_lastSent->getDatapoint(dpName))
                     m_lastSent->removeDatapoint(dpName);
                 m_lastSent->addDatapoint(new Datapoint(*candidate->getDatapoint(dpName)));
@@ -493,7 +449,8 @@ DeltaFilter::getTolerance(const std::string& asset)
  * Handle the configuration of the delta filter
  *
  * Configuration items
- *	tolerance	The percentage tolerance when comparing reading data
+ *  toleranceMeasure	Whether tolerance is specified as percentage/absolute value
+ *	tolerance	The tolerance value/percentage when comparing reading data
  *	processingMode	Reading processing mode
  *	minRate		The minimum rate at which readings should be sent
  *	rateUnit	The units in which minRate is define (per second, minute, hour or day)
@@ -504,17 +461,21 @@ void
 DeltaFilter::handleConfig(const ConfigCategory& config)
 {
     string toleranceMeasure = config.getValue("toleranceMeasure");
-    m_toleranceMeasure = (toleranceMeasure.compare("percentage")==0) ? ToleranceMeasure::PERCENTAGE : ToleranceMeasure::ABSOLUTE_VALUE;
+    m_toleranceMeasure = (toleranceMeasure.compare("Percentage")==0) ? 
+                            ToleranceMeasure::PERCENTAGE : 
+                            ToleranceMeasure::ABSOLUTE_VALUE;
 	
     m_tolerance = strtod(config.getValue("tolerance").c_str(), NULL);
-    Logger::getLogger()->info("handleConfig(): toleranceStr='%s', m_tolerance=%.20lf", config.getValue("tolerance").c_str(), m_tolerance);
+    Logger::getLogger()->info("handleConfig(): toleranceStr='%s', m_tolerance=%.20lf", 
+                                config.getValue("tolerance").c_str(), m_tolerance);
     
     string processingMode = config.getValue("processingMode");
-    Logger::getLogger()->info("handleConfig(): processingMode='%s' = %d", processingMode.c_str(), parseProcessingMode(processingMode));
+    Logger::getLogger()->info("handleConfig(): processingMode='%s' = %d", 
+                                processingMode.c_str(), parseProcessingMode(processingMode));
     m_processingMode = parseProcessingMode(processingMode);
     if(m_processingMode == DeltaFilter::INVALID_MODE)
     {
-        Logger::getLogger()->warn("Delta filter: Invalid reading processing mode '%s'; changing to default '%s",
+        Logger::getLogger()->warn("Delta filter: Invalid Reading processing mode '%s'; changing to default '%s",
                                         processingMode.c_str(), "Include full reading if any Datapoint exceeds tolerance");
         m_processingMode = DeltaFilter::ANY_DATAPOINT_MATCHES;
     }

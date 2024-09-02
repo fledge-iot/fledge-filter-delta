@@ -2,12 +2,12 @@
 Fledge delta Filter
 ====================
 
-Fledge "delta" filter passes deltas of reading data. A new reading
-is only sent onwards if the value of one or more data points in the new
-reading differs from the previous reading sent by the specified tolerance
-percentage/value.
+Fledge "delta" filter forwards deltas of reading data. A new reading 
+is only sent onwards based on the configured processing mode and the data 
+points that have changed in the new reading compared to last sent reading 
+by the specified tolerance percentage/value.
 
-By defining a minimum rate it is possible to force readings to be sent
+By defining a minimum rate it is possible to force readings to be sent 
 at that defined rate when there is no change in the value of the reading.
 
 Rates may be defined as per second, per minute, per hour or per day.
@@ -21,9 +21,9 @@ The following configuration items are supported:
     Tells whether 'tolerance' is specified as a percentage or an absolute value.
 
   tolerance
-    The percentage tolerance when comparing reading data. Only values
-    that differ by more than this percentage will be considered as different
-    from each other.
+    The percentage/absolute value of tolerance to use when comparing reading 
+    data. Only values that differ by more than this value will be considered 
+    as different from each other.
 
   processingMode
     Controls when the delta filter outputs a reading and what to include in this 
@@ -37,20 +37,21 @@ The following configuration items are supported:
     which readings will appear if there is no change in value.
 
   rateUnit
-    The units in which minRate is define (per second, minute, hour or day)
+    The units in which minRate is defined (per second, minute, hour or day)
 
   overrides
     A JSON document that can be used to define specific tolerance values for an 
     asset. This is defined as a set of name/value pairs for those assets that 
     should use a tolerance percentage/value other than the global tolerance value 
-    specified above.
+    specified above. 'toleranceMeasure' remains the same for all these entries 
+    as specified above.
 
 Example
 -------
 
-Send only readings that differ by more than 1 percent from the the
-previous reading sent or at a rate of one reading every half hour if
-the change is less than this.
+Send full reading if atleast one datapoint value differs by more than 1 percent 
+from its value in the previously sent reading or at a rate of one reading every 
+half hour if the change is less than this.
 
   toleranceMeasure
     percentage
