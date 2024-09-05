@@ -25,7 +25,7 @@ Delta filters are added in the same way as any other filters.
 
   - Configure the parameters of the delta filter
 
-    - **Tolerance Measure**:  Tells whether *Tolerance Value* is specified as a percentage or an absolute value.
+    - **Tolerance Measure**:  Defines if the *Tolerance Value* represents a percentage change or an absolute change.
     
     - **Tolerance Value**:  The tolerance percentage/value when comparing reading data. Only values that differ by more than this percentage/value will be considered as different from each other.
 
@@ -53,3 +53,27 @@ Delta filters are added in the same way as any other filters.
          }
 
   - Enable the filter and click *Done* to complete the process of adding the new filter.
+
+
+Important notes: 
+================
+
+Due to inherently limited precision of double/high-precision floating point values in programming languages like C++, the absolute tolerance value that can be reliably checked by this filter depends on the scale of the data being processed.
+
+Following combinations have been tested successfully.
+
++-----------------+--------------------------+
+|  Scale of data  | Absolute tolerance value |
++=================+==========================+
+|     10^9        |          10^-03          |
++-----------------+--------------------------+
+|     10^6        |          10^-06          |
++-----------------+--------------------------+
+|     10^3        |          10^-06          |
++-----------------+--------------------------+
+|     10^0        |          10^-06          |
++-----------------+--------------------------+
+|     10^-03      |          10^-06          |
++-----------------+--------------------------+
+|     10^-06      |          10^-06          |
++-----------------+--------------------------+

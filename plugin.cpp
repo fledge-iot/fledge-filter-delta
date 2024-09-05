@@ -82,7 +82,7 @@ static const char *default_config = QUOTE({
 			"displayName" : "Minimum Rate Units"
 			},
 		"overrides" : {
-			"description": "Individual asset tolarances if different from the global tolarance",
+			"description": "Individual asset tolerances, if different from the global tolerance",
 			"type": "JSON",
 			"default": "{ }",
 			"order" : "6",

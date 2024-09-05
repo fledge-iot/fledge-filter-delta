@@ -67,8 +67,9 @@ DeltaFilter::~DeltaFilter()
  */
 void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
 {
-    bool sendOrig;
+    bool sendOrig = false;
     Reading* readingToSend = nullptr;
+    
 	// Iterate over the readings
 	for (vector<Reading *>::const_iterator it = readings->begin();
 					it != readings->end(); it++)
