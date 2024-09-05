@@ -155,7 +155,7 @@ bool checkToleranceExceeded(const string &dpName, const DatapointValue& oValue, 
 
         change = fabs(newValue - prevValue);
         if(toleranceMeasure == DeltaFilter::ToleranceMeasure::PERCENTAGE)
-            change = (change * 100.0) / prevValue;
+            change = fabs((change * 100.0) / prevValue);
 
         Logger::getLogger()->debug("dpName=%s, prevValue=%.20lf, newValue=%.20lf, toleranceMeasure=%d, tolerance=%.20lf", 
                                         dpName.c_str(), prevValue, newValue, toleranceMeasure, tolerance);
