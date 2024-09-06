@@ -86,7 +86,6 @@ static const char *default_config = QUOTE({
 			"type": "JSON",
 			"default": "{ }",
 			"order" : "6",
-			"group": "Individual Tolerances",
 			"displayName" : "Individual Tolerances"
 			}
 	});
