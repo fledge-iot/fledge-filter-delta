@@ -36,20 +36,41 @@ static const char *default_config = QUOTE({
 			"type": "boolean",
 			"displayName": "Enabled",
 			"default": "false",
-			"order" : "5"
+			"order" : "7"
 		       	},
-		"tolerance": {
-			"description": "A percentage difference that will be tolerated when determining if values are equal.",
-			"type": "float",
-			"default": "0",
+        "toleranceMeasure": {
+			"description": "Whether tolerance is specified as a percentage or in absolute terms",
+			"type": "enumeration",
+			"options" : [ "Percentage", "Absolute Value" ],
+			"default": "Percentage",
 			"order" : "1",
-		       	"displayName" : "Tolerance %"
+			"displayName" : "Tolerance Measure"
+			},
+		"tolerance": {
+			"description": "A percentage/absolute difference that will be tolerated when determining if values are equal.",
+			"type": "float",
+			"minimum": "0.0",
+			"default": "1.0",
+			"mandatory": "true",
+			"order" : "2",
+			"displayName" : "Tolerance Value"
+			},
+		"processingMode": {
+			"description": "Reading processing mode",
+			"type": "enumeration",
+			"options" : [ "Include full reading if any Datapoint exceeds tolerance", "Include full reading if all Datapoints exceed tolerance", 
+                            "Include only the Datapoints that exceed tolerance" ],
+			"default": "Include full reading if any Datapoint exceeds tolerance",
+			"order" : "3",
+			"displayName" : "Reading Processing Mode"
 			},
 		"minRate": {
 			"description": "The minimum rate at which data must be sent",
 			"type": "integer",
+			"minimum": "0",
 			"default": "0",
-			"order" : "2",
+			"mandatory": "true",
+			"order" : "4",
 			"displayName" : "Minimum Rate"
 			},
 		"rateUnit": {
@@ -57,14 +78,14 @@ static const char *default_config = QUOTE({
 			"type": "enumeration",
 			"options" : [ "per second", "per minute", "per hour", "per day" ],
 			"default": "per second",
-			"order" : "3",
+			"order" : "5",
 			"displayName" : "Minimum Rate Units"
 			},
 		"overrides" : {
-			"description": "Individual asset tolarances if different from the global tolarance",
+			"description": "Individual asset tolerances, if different from the global tolerance",
 			"type": "JSON",
 			"default": "{ }",
-			"order" : "4",
+			"order" : "6",
 			"displayName" : "Individual Tolerances"
 			}
 	});
