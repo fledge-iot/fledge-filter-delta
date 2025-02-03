@@ -47,9 +47,9 @@ Delta filters are added in the same way as any other filters.
 
   - Enable the filter and click *Done* to complete the process of adding the new filter.
 
-
+----------------
 Important notes: 
-================
+----------------
 
 Due to inherently limited precision of double/high-precision floating point values in programming languages like C++, the absolute tolerance value that can be reliably checked by this filter depends on the scale of the data being processed.
 
