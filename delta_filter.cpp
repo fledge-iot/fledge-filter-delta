@@ -50,6 +50,11 @@ DeltaFilter::DeltaFilter(const std::string& filterName,
  */
 DeltaFilter::~DeltaFilter()
 {
+	// Cleanup memory in m_state pair
+	for (DeltaMap::iterator deltaIt = m_state.begin(); deltaIt != m_state.end(); deltaIt++)
+	{
+		delete deltaIt->second;
+	}
 }
 
 /**
@@ -87,20 +92,19 @@ void DeltaFilter::ingest(vector<Reading *> *readings, vector<Reading *>& out)
 		else if (deltaIt->second->evaluate(reading, m_toleranceMeasure, getTolerance(reading->getAssetName()), m_rate, 
                                             m_processingMode, sendOrig, readingToSend))
 		{
-            // evaluate's return value indicates whether a reading needs to be sent onwards
-            if(sendOrig)
-            {
-                // out.push_back(move(*it)); // TODO: check if it is possible to just move the reading ptr to out vector
-                // *it = nullptr;
-                out.push_back(new Reading(*reading));
-                delete *it;
-            }
-            else
-            {
-                if(readingToSend)
-                    out.push_back(readingToSend); // readingToSend is allocated on heap
-                delete *it;
-            }
+			// evaluate's return value indicates whether a reading needs to be sent onwards
+			if(sendOrig)
+			{
+				// Safe to just use reading as we clear the reading set
+				// at the end. Hence in other cases we delete the reading
+				out.push_back(*it);
+			}
+			else
+			{
+				if(readingToSend)
+					out.push_back(readingToSend); // readingToSend is allocated on heap
+				delete *it;
+			}
 		}
 		else
 		{
@@ -366,8 +370,12 @@ struct timeval	now, res;
         {
             string dpName = dp->getName();
             if(m_lastSent->getDatapoint(dpName))
-                m_lastSent->removeDatapoint(dpName);
-            m_lastSent->addDatapoint(new Datapoint(*candidate->getDatapoint(dpName)));
+	    {
+                Datapoint *oldDp = m_lastSent->removeDatapoint(dpName);
+		if (oldDp)
+			delete oldDp;
+	    }
+            m_lastSent->addDatapoint(new Datapoint(*dp));
             Logger::getLogger()->debug("FORWARDING FULL READING: Updated m_lastSent: DP '%s' with value '%s'", 
                                             dpName.c_str(), m_lastSent->getDatapoint(dpName)->toJSONProperty().c_str());
         }
@@ -392,13 +400,19 @@ struct timeval	now, res;
             if(changedDPs.count(dpName) == 0)
             {
                 Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: removing unchanged DP '%s' ", dpName.c_str());
-                readingToSend->removeDatapoint(dpName);
+                Datapoint *oldDp = readingToSend->removeDatapoint(dpName);
+		if (oldDp)
+			delete oldDp;
             }
             else
             {
                 // Update this changed DP's value in m_lastSent
                 if(m_lastSent->getDatapoint(dpName))
-                    m_lastSent->removeDatapoint(dpName);
+		{
+                    Datapoint *oldDp = m_lastSent->removeDatapoint(dpName);
+		    if (oldDp)
+			    delete oldDp;
+		}
                 m_lastSent->addDatapoint(new Datapoint(*candidate->getDatapoint(dpName)));
                 Logger::getLogger()->debug("ONLY_CHANGED_DATAPOINTS: Updated m_lastSent: DP '%s' with value '%s'", 
                                                 dpName.c_str(), m_lastSent->getDatapoint(dpName)->toJSONProperty().c_str());
