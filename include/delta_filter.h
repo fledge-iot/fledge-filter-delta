@@ -35,29 +35,29 @@ class DeltaFilter : public FledgeFilter {
 		void	ingest(std::vector<Reading *> *in, std::vector<Reading *>& out);
 		void	reconfigure(const std::string& newConfig);
 
-        enum ProcessingMode {
-            ANY_DATAPOINT_MATCHES=1,
-            ALL_DATAPOINTS_MATCH,
-            ONLY_CHANGED_DATAPOINTS,
-            INVALID_MODE = -1
-        };
-        enum ToleranceMeasure {
-            PERCENTAGE=1,
-            ABSOLUTE_VALUE,
-            INVALID_VALUE = -1
-        };
+		enum ProcessingMode {
+			ANY_DATAPOINT_MATCHES=1,
+			ALL_DATAPOINTS_MATCH,
+			ONLY_CHANGED_DATAPOINTS,
+			INVALID_MODE = -1
+		};
+		enum ToleranceMeasure {
+			PERCENTAGE=1,
+			ABSOLUTE_VALUE,
+			INVALID_VALUE = -1
+		};
 
-        ProcessingMode parseProcessingMode(const std::string& s)
-        {
-            if(s.compare("Include full reading if any Datapoint exceeds tolerance") == 0)
-                return ProcessingMode::ANY_DATAPOINT_MATCHES;
-            else if(s.compare("Include full reading if all Datapoints exceed tolerance") == 0)
-                return ProcessingMode::ALL_DATAPOINTS_MATCH;
-            else if(s.compare("Include only the Datapoints that exceed tolerance") == 0)
-                return ProcessingMode::ONLY_CHANGED_DATAPOINTS;
-            else
-                return ProcessingMode::INVALID_MODE;
-        }
+		ProcessingMode parseProcessingMode(const std::string& s)
+		{
+			if (s.compare("Include full reading if any Datapoint exceeds tolerance") == 0)
+				return ProcessingMode::ANY_DATAPOINT_MATCHES;
+			else if (s.compare("Include full reading if all Datapoints exceed tolerance") == 0)
+				return ProcessingMode::ALL_DATAPOINTS_MATCH;
+			else if(s.compare("Include only the Datapoints that exceed tolerance") == 0)
+				return ProcessingMode::ONLY_CHANGED_DATAPOINTS;
+			else
+			return ProcessingMode::INVALID_MODE;
+		}
 
 	private:
 		double		getTolerance(const std::string& asset);
@@ -65,12 +65,17 @@ class DeltaFilter : public FledgeFilter {
 			public:
 				DeltaData(Reading *);
 				~DeltaData();
-                bool evaluate(Reading *, DeltaFilter::ToleranceMeasure toleranceMeasure, double tolerance, struct timeval rate, 
-                                DeltaFilter::ProcessingMode processingMode, bool &sendOrig, Reading* &readingToSend);
+				bool			evaluate(Reading *,
+								DeltaFilter::ToleranceMeasure toleranceMeasure,
+								double tolerance,
+								struct timeval rate, 
+								DeltaFilter::ProcessingMode processingMode,
+								bool &sendOrig,
+							       	Reading* &readingToSend);
 				const std::string& 	getAssetName() { return m_lastSent->getAssetName(); };
 			private:
-				Reading		*m_lastSent;
-				struct timeval	m_lastSentTime;
+				Reading			*m_lastSent;
+				struct timeval		m_lastSentTime;
 		};
 		typedef std::map<const std::string, DeltaData *> DeltaMap;
 		void 		handleConfig(const ConfigCategory& conf);
@@ -80,8 +85,9 @@ class DeltaFilter : public FledgeFilter {
 		double		m_tolerance;
 		std::map<std::string, double>
 				m_tolerances;
-        ProcessingMode m_processingMode;
-        ToleranceMeasure m_toleranceMeasure;
+		ProcessingMode	m_processingMode;
+		ToleranceMeasure
+				m_toleranceMeasure;
 };
 
 #endif
