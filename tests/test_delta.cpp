@@ -19,6 +19,7 @@ extern "C" {
     PLUGIN_HANDLE plugin_init(ConfigCategory* config,
               OUTPUT_HANDLE *outHandle,
               OUTPUT_STREAM output);
+    void plugin_shutdown(PLUGIN_HANDLE handle);
     int called = 0;
 
     void Handler(void *handle, READINGSET *readings)
@@ -66,6 +67,8 @@ TEST(DELTA, RemoveOne)
     readings->push_back(new Reading("test", value2));
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
 
@@ -90,6 +93,10 @@ TEST(DELTA, RemoveOne)
     ASSERT_STREQ(outdp->getName().c_str(), "test");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_INTEGER);
     ASSERT_EQ(outdp->getData().toInt(), 1140);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 TEST(DELTA, Disabled)
@@ -121,6 +128,8 @@ TEST(DELTA, Disabled)
     readings->push_back(new Reading("test", value2));
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
 
@@ -155,5 +164,9 @@ TEST(DELTA, Disabled)
     ASSERT_STREQ(outdp->getName().c_str(), "test");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_INTEGER);
     ASSERT_EQ(outdp->getData().toInt(), 1140);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 

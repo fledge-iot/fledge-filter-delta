@@ -21,6 +21,7 @@ extern "C" {
     PLUGIN_HANDLE plugin_init(ConfigCategory* config,
               OUTPUT_HANDLE *outHandle,
               OUTPUT_STREAM output);
+    void plugin_shutdown(PLUGIN_HANDLE handle);
 
     extern void Handler(void *handle, READINGSET *readings);
 };
@@ -64,6 +65,8 @@ TEST(DELTA, AbsoluteChangeAnyDatapoint1)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
 
@@ -97,6 +100,10 @@ TEST(DELTA, AbsoluteChangeAnyDatapoint1)
     ASSERT_STREQ(outdp->getName().c_str(), "dp2");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_INTEGER);
     ASSERT_EQ(outdp->getData().toInt(), 1050);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Look for absolute change of 100 in any datapoint */
@@ -139,6 +146,8 @@ TEST(DELTA, AbsoluteChangeAnyDatapoint2)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -177,6 +186,10 @@ TEST(DELTA, AbsoluteChangeAnyDatapoint2)
     ASSERT_STREQ(outdp->getName().c_str(), "dp2");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_INTEGER);
     ASSERT_EQ(outdp->getData().toInt(), 1002);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Look for absolute change of 0.0001 in any datapoint */
@@ -219,6 +232,8 @@ TEST(DELTA, AbsoluteChangeAnyDatapointSmallValues1)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -247,6 +262,10 @@ TEST(DELTA, AbsoluteChangeAnyDatapointSmallValues1)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_FLOAT);
     ASSERT_EQ(outdp->getData().toDouble(), 2.0001);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Look for absolute change of 0.0000001 in any datapoint */
@@ -289,6 +308,8 @@ TEST(DELTA, AbsoluteChangeAnyDatapointSmallValues2)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -317,6 +338,10 @@ TEST(DELTA, AbsoluteChangeAnyDatapointSmallValues2)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_FLOAT);
     ASSERT_EQ(outdp->getData().toDouble(), 2.000001);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Look for absolute change of 0.000001 in any datapoint */
@@ -359,6 +384,8 @@ TEST(DELTA, AbsoluteChangeAnyDatapointSmallValues3)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -387,6 +414,10 @@ TEST(DELTA, AbsoluteChangeAnyDatapointSmallValues3)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_FLOAT);
     ASSERT_EQ(outdp->getData().toDouble(), 0.002401);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Look for absolute change of 0.000000001 in any datapoint */
@@ -429,6 +460,8 @@ TEST(DELTA, AbsoluteChangeAnyDatapointSmallValues4)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -457,6 +490,10 @@ TEST(DELTA, AbsoluteChangeAnyDatapointSmallValues4)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_FLOAT);
     ASSERT_EQ(outdp->getData().toDouble(), 0.000002401);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Look for absolute change of 0.000001 in any datapoint */
@@ -499,6 +536,8 @@ TEST(DELTA, AbsoluteChangeAnyDatapointLargeValues1)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -527,6 +566,10 @@ TEST(DELTA, AbsoluteChangeAnyDatapointLargeValues1)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_FLOAT);
     ASSERT_EQ(outdp->getData().toDouble(), 1134.000001);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Look for absolute change of 0.000001 in any datapoint */
@@ -569,6 +612,8 @@ TEST(DELTA, AbsoluteChangeAnyDatapointLargeValues2)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -597,6 +642,10 @@ TEST(DELTA, AbsoluteChangeAnyDatapointLargeValues2)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_FLOAT);
     ASSERT_EQ(outdp->getData().toDouble(), 2000000.788901);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Look for absolute change of 0.000001 in any datapoint */
@@ -639,6 +688,8 @@ TEST(DELTA, AbsoluteChangeAnyDatapointLargeValues3)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -667,6 +718,10 @@ TEST(DELTA, AbsoluteChangeAnyDatapointLargeValues3)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_FLOAT);
     ASSERT_EQ(outdp->getData().toDouble(), 2000000000.788901);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Look for absolute change of 0.000001 in any datapoint */
@@ -709,6 +764,8 @@ TEST(DELTA, AbsoluteChangeAnyDatapointLargeValues4)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -737,6 +794,10 @@ TEST(DELTA, AbsoluteChangeAnyDatapointLargeValues4)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_FLOAT);
     ASSERT_EQ(outdp->getData().toDouble(), 2000000000.788905);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 
@@ -780,6 +841,8 @@ TEST(DELTA, AbsoluteChangeNegativeValueAnyDatapointLargeValues4)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -808,6 +871,10 @@ TEST(DELTA, AbsoluteChangeNegativeValueAnyDatapointLargeValues4)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_FLOAT);
     ASSERT_EQ(outdp->getData().toDouble(), -2000000000.788905);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Look for 10% change in any datapoint */
@@ -850,6 +917,8 @@ TEST(DELTA, PercentChangeAnyDatapoint)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -888,6 +957,10 @@ TEST(DELTA, PercentChangeAnyDatapoint)
     ASSERT_STREQ(outdp->getName().c_str(), "dp2");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_INTEGER);
     ASSERT_EQ(outdp->getData().toInt(), 1002);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 
@@ -931,6 +1004,8 @@ TEST(DELTA, PercentChangeNegativeValueAnyDatapoint)
     readings->emplace_back(rdng3);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -969,4 +1044,8 @@ TEST(DELTA, PercentChangeNegativeValueAnyDatapoint)
     ASSERT_STREQ(outdp->getName().c_str(), "dp2");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_INTEGER);
     ASSERT_EQ(outdp->getData().toInt(), -1002);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
