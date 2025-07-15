@@ -20,6 +20,7 @@ extern "C" {
     PLUGIN_HANDLE plugin_init(ConfigCategory* config,
               OUTPUT_HANDLE *outHandle,
               OUTPUT_STREAM output);
+    void plugin_shutdown(PLUGIN_HANDLE handle);
     extern void Handler(void *handle, READINGSET *readings);
 };
 
@@ -63,6 +64,8 @@ TEST(DELTA, AbsoluteSendOnlyChangedDatapoints)
     readings->emplace_back(rdng4);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -111,6 +114,10 @@ TEST(DELTA, AbsoluteSendOnlyChangedDatapoints)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_INTEGER);
     ASSERT_EQ(outdp->getData().toInt(), 1111);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Forward only the datapoint(s) with atleast 10% change */
@@ -153,6 +160,8 @@ TEST(DELTA, PercentSendOnlyChangedDatapoints)
     readings->emplace_back(rdng4);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -201,6 +210,10 @@ TEST(DELTA, PercentSendOnlyChangedDatapoints)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_INTEGER);
     ASSERT_EQ(outdp->getData().toInt(), 1111);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 
@@ -244,6 +257,8 @@ TEST(DELTA, AbsoluteNegativeValuesSendOnlyChangedDatapoints)
     readings->emplace_back(rdng4);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -292,6 +307,10 @@ TEST(DELTA, AbsoluteNegativeValuesSendOnlyChangedDatapoints)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_INTEGER);
     ASSERT_EQ(outdp->getData().toInt(), -1111);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
 
 /* TEST CASE : Forward only the datapoint(s) with atleast 10% change */
@@ -334,6 +353,8 @@ TEST(DELTA, PercentNegativeValuesSendOnlyChangedDatapoints)
     readings->emplace_back(rdng4);
 
     ReadingSet *readingSet = new ReadingSet(readings);
+    readings->clear();
+    delete readings;
     plugin_ingest(handle, (READINGSET *)readingSet);
 
     vector<Reading *>results = outReadings->getAllReadings();
@@ -382,4 +403,8 @@ TEST(DELTA, PercentNegativeValuesSendOnlyChangedDatapoints)
     ASSERT_STREQ(outdp->getName().c_str(), "dp1");
     ASSERT_EQ(outdp->getData().getType(), DatapointValue::T_INTEGER);
     ASSERT_EQ(outdp->getData().toInt(), -1111);
+
+    delete outReadings;
+    delete config;
+    plugin_shutdown(handle);
 }
